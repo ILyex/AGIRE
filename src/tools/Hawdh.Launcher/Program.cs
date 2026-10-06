@@ -14,7 +14,10 @@ var resetMode = args.Any(argument => string.Equals(argument, "--reset", StringCo
 
 if (resetMode)
 {
-    var resetDataRoot = Path.Combine(AppContext.BaseDirectory, "payload", "data");
+    var resetRoot = File.Exists(Path.Combine(AppContext.BaseDirectory, "Hawdh.Portal.exe"))
+        ? AppContext.BaseDirectory
+        : Path.Combine(AppContext.BaseDirectory, "payload");
+    var resetDataRoot = Path.Combine(resetRoot, "data");
     var resetDatabase = Path.Combine(resetDataRoot, "hawdh.local.db");
     var resetMarker = Path.Combine(resetDataRoot, ".setup-complete");
     using var confirm = new ResetConfirmForm();
@@ -256,7 +259,7 @@ internal sealed class LauncherForm : Form
     private readonly string root = AppContext.BaseDirectory;
     private readonly PrivateFontCollection platformFonts = new();
     private FontFamily? platformFont;
-    private string Payload => Path.Combine(root, "payload");
+    private string Payload => File.Exists(Path.Combine(root, "Hawdh.Portal.exe")) ? root : Path.Combine(root, "payload");
     private string DataRoot => Path.Combine(Payload, "data");
     private const int Port = 5182;
 
@@ -819,16 +822,22 @@ internal sealed class LauncherForm : Form
         {
             var startup = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
             if (string.IsNullOrWhiteSpace(startup) || string.IsNullOrWhiteSpace(Environment.ProcessPath)) return;
-            var link = Path.Combine(startup, "منصة مهندس.lnk");
             var shellType = Type.GetTypeFromProgID("WScript.Shell");
             if (shellType is null) return;
             dynamic shell = Activator.CreateInstance(shellType)!;
-            dynamic shortcut = shell.CreateShortcut(link);
-            shortcut.TargetPath = Environment.ProcessPath;
-            shortcut.IconLocation = $"{Environment.ProcessPath},0";
-            shortcut.WorkingDirectory = root;
-            shortcut.Description = "تشغيل منصة مهندس تلقائيا";
-            shortcut.Save();
+            foreach (var link in new[]
+            {
+                Path.Combine(startup, "AGIRE.lnk"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "AGIRE.lnk")
+            })
+            {
+                dynamic shortcut = shell.CreateShortcut(link);
+                shortcut.TargetPath = Environment.ProcessPath;
+                shortcut.IconLocation = $"{Environment.ProcessPath},0";
+                shortcut.WorkingDirectory = root;
+                shortcut.Description = "تشغيل AGIRE";
+                shortcut.Save();
+            }
         }
         catch
         {
