@@ -79,6 +79,8 @@ if (-not (Test-Administrator)) {
 
 $packageDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
 $packagePayload = Join-Path $packageDirectory 'payload'
+$launcher = Join-Path $packageDirectory 'AGIRE.exe'
+$icon = Join-Path $packageDirectory 'agire.ico'
 if (-not (Test-Path $packagePayload)) { $packagePayload = $packageDirectory }
 $exe = Join-Path $packagePayload 'Hawdh.Portal.exe'
 if (-not (Test-Path $exe)) { throw "Hawdh.Portal.exe غير موجود بجانب ملف التثبيت." }
@@ -87,6 +89,10 @@ New-Item -ItemType Directory -Force -Path $InstallDirectory, (Join-Path $Install
 Get-ChildItem $packagePayload -File | ForEach-Object {
     Copy-Item $_.FullName (Join-Path $InstallDirectory $_.Name) -Force
 }
+if (Test-Path $launcher) { Copy-Item $launcher (Join-Path $InstallDirectory 'AGIRE.exe') -Force }
+if (Test-Path $icon) { Copy-Item $icon (Join-Path $InstallDirectory 'agire.ico') -Force }
+$updateScript = Join-Path $packageDirectory 'Update-AGIRE.ps1'
+if (Test-Path $updateScript) { Copy-Item $updateScript (Join-Path $InstallDirectory 'Update-AGIRE.ps1') -Force }
 
 $hostname = [Net.Dns]::GetHostName()
 $ip = (Get-NetIPAddress -AddressFamily IPv4 -PrefixOrigin Dhcp -ErrorAction SilentlyContinue |
@@ -155,6 +161,7 @@ $shortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Comm
 $shortcut.TargetPath = $startFile
 $shortcut.WorkingDirectory = $InstallDirectory
 $shortcut.Description = 'تشغيل منصة مهندس على هذا الكمبيوتر'
+$shortcut.IconLocation = "$(Join-Path $InstallDirectory 'AGIRE.exe'),0"
 $shortcut.Save()
 
 # Start automatically for the signed-in user as a reliable fallback to the SYSTEM task.
@@ -162,7 +169,16 @@ $startupShortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPat
 $startupShortcut.TargetPath = $startFile
 $startupShortcut.WorkingDirectory = $InstallDirectory
 $startupShortcut.Description = 'تشغيل منصة مهندس تلقائيا عند تسجيل الدخول'
+$startupShortcut.IconLocation = "$(Join-Path $InstallDirectory 'AGIRE.exe'),0"
 $startupShortcut.Save()
+
+$updateShortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'تحديث AGIRE.lnk'))
+$updateShortcut.TargetPath = (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe')
+$updateShortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$(Join-Path $InstallDirectory 'Update-AGIRE.ps1')`" -InstallDirectory `"$InstallDirectory`""
+$updateShortcut.WorkingDirectory = $InstallDirectory
+$updateShortcut.Description = 'التحقق من تحديثات منصة AGIRE وتثبيتها'
+$updateShortcut.IconLocation = "$(Join-Path $InstallDirectory 'AGIRE.exe'),0"
+$updateShortcut.Save()
 
 $url = if ($ip) { "http://${ip}:$Port" } else { "http://$hostname`:$Port" }
 $urlShortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'فتح منصة مهندس.lnk'))

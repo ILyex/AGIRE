@@ -6,5 +6,5 @@ scriptPath = fso.BuildPath(fso.GetParentFolderName(WScript.ScriptFullName), "Ins
 command = "powershell.exe -NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File """ & scriptPath & """"
 result = shell.Run(command, 0, False)
 If result <> 0 Then
-  MsgBox "لم يكتمل بدء التثبيت. أعد المحاولة، وإذا تكررت المشكلة أرسل ملف HawdhInstaller.log من مجلد Temp للدعم.", vbExclamation, "منصة مهندس"
+  MsgBox "لم يكتمل بدء التثبيت. أعد المحاولة، وإذا تكررت المشكلة أرسل ملف HawdhInstaller.log من مجلد Temp للدعم.", vbExclamation, "AGIRE"
 End If

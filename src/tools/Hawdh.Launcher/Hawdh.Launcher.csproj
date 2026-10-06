@@ -17,5 +17,6 @@
     <EmbeddedResource Include="Assets\view.png" LogicalName="Hawdh.Launcher.Assets.view.png" />
     <EmbeddedResource Include="Assets\w.png" LogicalName="Hawdh.Launcher.Assets.w.png" />
     <EmbeddedResource Include="Assets\IBMPlexSansArabic-Regular.ttf" LogicalName="Hawdh.Launcher.Assets.IBMPlexSansArabic-Regular.ttf" />
+    <EmbeddedResource Include="Assets\agire-installer.png" LogicalName="Hawdh.Launcher.Assets.agire-installer.png" />
   </ItemGroup>
 </Project>

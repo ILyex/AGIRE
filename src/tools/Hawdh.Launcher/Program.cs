@@ -702,6 +702,12 @@ internal sealed class LauncherForm : Form
             return new Bitmap(source);
     }
 
+    private static Bitmap LoadBrandIcon()
+    {
+        using var stream = typeof(LauncherForm).Assembly.GetManifestResourceStream("Hawdh.Launcher.Assets.agire-installer.png")!;
+        return new Bitmap(stream);
+    }
+
     private static Bitmap TintIcon(Bitmap source, Color color)
     {
         var tinted = new Bitmap(source.Width, source.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);

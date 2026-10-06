@@ -37,8 +37,13 @@ if (Test-Path $preservedData) {
 Rename-Item (Join-Path $output 'Hawdh.Launcher.exe') (Join-Path $output 'Hawdh.exe') -Force
 Copy-Item (Join-Path $output 'Hawdh.exe') (Join-Path $output 'AGIRE.exe') -Force
 Copy-Item (Join-Path $output 'Hawdh.exe') (Join-Path $output 'REST.exe') -Force
+Copy-Item (Join-Path $repoRoot 'src\tools\Hawdh.Launcher\agire.ico') (Join-Path $output 'agire.ico') -Force
+Copy-Item (Join-Path $repoRoot 'src\tools\Hawdh.Launcher\Assets\agire-installer.png') (Join-Path $output 'agire-installer.png') -Force
+Set-Content -LiteralPath (Join-Path $output 'version.txt') -Value (git -C $repoRoot rev-parse --short HEAD) -Encoding ascii
 Remove-Item (Join-Path $output 'Hawdh.Launcher.pdb') -Force -ErrorAction SilentlyContinue
 Copy-Item (Join-Path $PSScriptRoot 'README.ar.md') (Join-Path $output 'README.txt') -Force
 Copy-Item (Join-Path $PSScriptRoot 'Backup-HawdhLocal.ps1') (Join-Path $payload 'Backup-HawdhLocal.ps1') -Force
 Copy-Item (Join-Path $PSScriptRoot 'Start-HawdhLocal.cmd') (Join-Path $payload 'Start-HawdhLocal.cmd') -Force
+Copy-Item (Join-Path $PSScriptRoot 'Update-AGIRE.ps1') (Join-Path $output 'Update-AGIRE.ps1') -Force
+Copy-Item (Join-Path $PSScriptRoot 'Update-AGIRE.ps1') (Join-Path $payload 'Update-AGIRE.ps1') -Force
 Write-Host "Local Windows package created: $output"
