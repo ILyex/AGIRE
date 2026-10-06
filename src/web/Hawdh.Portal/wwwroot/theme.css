@@ -1841,6 +1841,18 @@ html[data-theme="dark"] .security-notice > a.security-notice-link:hover { backgr
     max-width: none !important;
 }
 .auth-card > form .d-flex { display: flex !important; }
+.auth-card > form > .mb-3,
+.auth-card > form > .mb-2,
+.auth-card > form > .my-3,
+.auth-card > form > button,
+.auth-card > form .auth-input-wrap,
+.auth-card > form .auth-input-wrap input {
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    align-self: stretch;
+    inline-size: 100% !important;
+    min-inline-size: 100% !important;
+}
 html[dir="rtl"] .account-form-page { margin-inline-start: auto; }
 html[data-theme="dark"] .personal-data-card { background: color-mix(in srgb,var(--canvas) 82%,var(--card)); }
 .auth-mini-brand-lockup { width: 94px; justify-items: center; }
