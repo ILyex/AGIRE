@@ -13,8 +13,13 @@
 @inject IdentityRedirectManager RedirectManager
 
 <PageTitle>@T["loginTitle"] — @T["brand"]</PageTitle>
-<div class="auth-screen auth-screen-standalone">
-    <main class="auth-card">
+<div class="auth-screen">
+    <section class="auth-story" aria-label="@T["systemName"]">
+        <div class="auth-brand-lockup"><img class="agency-logo agency-logo-login agency-logo-login-light" src="/images/agire-logo-tiaret-transparent.png?v=20261006-6" alt="@T["brand"]" draggable="false" /><img class="agency-logo agency-logo-login agency-logo-login-dark" src="/images/agire-logo-tiaret-dark.png?v=20261006-6" alt="" aria-hidden="true" draggable="false" /></div>
+        <div class="auth-story-copy"><span class="auth-kicker"><AppIcon Name="shield" Size="14" /> @T["secure"]</span><h1>@T["systemName"]</h1><p>@T["systemLine"]</p></div>
+        <div class="auth-watermark" aria-hidden="true"><svg viewBox="0 0 320 320"><circle cx="160" cy="160" r="132"/><circle cx="160" cy="160" r="94"/><path d="M160 55c-25 38-64 77-64 112a64 64 0 0 0 128 0c0-35-39-74-64-112Z"/><path d="M132 170c3 20 13 31 31 34"/></svg></div>
+    </section>
+    <section class="auth-card">
         <div class="auth-mini-brand"><div class="auth-utilities"><button type="button" class="theme-toggle theme-toggle-compact" data-dark-label="@T["darkMode"]" data-light-label="@T["lightMode"]" aria-label="@T["darkMode"]" title="@T["darkMode"]"><span class="theme-toggle-icon" data-state="moon"><AppIcon Name="moon" Class="theme-icon-moon" Size="16" /><AppIcon Name="sun" Class="theme-icon-sun" Size="16" /></span><span class="theme-toggle-label visually-hidden">@T["darkMode"]</span></button><a href="@CultureLink" data-enhance-nav="false" class="language-toggle"><AppIcon Name="globe" Size="15" />@T["switch"]</a></div></div>
         <div class="auth-heading-icon"><AppIcon Name="lock" Size="20" /></div><h2 class="auth-title">@T["loginTitle"]</h2><p class="auth-subtitle">@T["loginSubtitle"]</p>
         @if (!string.IsNullOrEmpty(errorMessage)) { <div class="alert-error" role="alert">@errorMessage</div> }
@@ -26,7 +31,7 @@
             <button type="submit" class="btn btn-primary w-100 auth-submit">@T["signIn"] <AppIcon Name="arrow" Size="17" /></button>
         </EditForm>
         <div class="auth-note"><AppIcon Name="shield" Size="15" /> @T["loginFoot"]</div>
-    </main>
+    </section>
 </div>
 
 @code {
