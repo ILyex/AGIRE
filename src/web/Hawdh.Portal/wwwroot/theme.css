@@ -1820,6 +1820,16 @@ html[data-theme="dark"] .security-notice > a.security-notice-link:hover { backgr
 .auth-card .alert-success { margin: 0 0 14px; padding: 11px 12px; border: 1px solid color-mix(in srgb,#3a9b79 28%,var(--line)); border-radius: 10px; background: color-mix(in srgb,#3a9b79 9%,var(--card)); color: var(--ink); font-size: 11px; line-height: 1.7; }
 .auth-card > .account-verify-button { margin-top: 14px; }
 .auth-screen-standalone { grid-template-columns: minmax(0,470px); justify-content: center; }
+/* Keep the login form aligned to the card.  Bootstrap's RTL rules can leave
+   an EditForm at its intrinsic width, which makes the fields occupy only the
+   right half of the card. */
+.auth-card > form,
+.auth-card > .auth-form,
+.auth-card .auth-input-wrap,
+.auth-card .auth-input-wrap .form-control,
+.auth-card > form > .mb-3,
+.auth-card > form > .mb-2 { width: 100%; min-width: 0; }
+.auth-card > form .form-control { display: block; }
 html[dir="rtl"] .account-form-page { margin-inline-start: auto; }
 html[data-theme="dark"] .personal-data-card { background: color-mix(in srgb,var(--canvas) 82%,var(--card)); }
 .auth-mini-brand-lockup { width: 94px; justify-items: center; }
