@@ -1841,6 +1841,10 @@ html[data-theme="dark"] .security-notice > a.security-notice-link:hover { backgr
     max-width: none !important;
 }
 .auth-card > form .d-flex { display: flex !important; }
+.auth-card .auth-form { display: block !important; inline-size: 100% !important; width: 100% !important; }
+.auth-card .auth-form > .mb-3,
+.auth-card .auth-form > .mb-2,
+.auth-card .auth-form > .my-3 { display: block !important; inline-size: 100% !important; width: 100% !important; }
 .auth-card > form > .mb-3,
 .auth-card > form > .mb-2,
 .auth-card > form > .my-3,
