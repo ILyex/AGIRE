@@ -1,0 +1,55 @@
+@inject UiText T
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="brand-lockup">
+    <img class="agency-logo agency-logo-sidebar" src="/images/agire-logo-tiaret-dark.png?v=20261006-6" alt="@T["brand"]" draggable="false" />
+    <div class="sidebar-greeting" dir="auto">
+        <span class="sidebar-greeting-line"><span>@T[GreetingKey]</span><AppIcon Name="@(IsMorning ? "sun" : "moon")" Class="sidebar-greeting-icon" Size="16" /></span>
+        <strong title="@DisplayName">@DisplayName</strong>
+    </div>
+</div>
+<div class="nav-caption">@T["menu"]</div>
+<nav class="side-nav" aria-label="@T["menu"]">
+    <NavLink href="/" Match="NavLinkMatch.All" class="side-link"><AppIcon Name="dashboard" Class="nav-icon" Size="18" /><span>@T["dashboard"]</span></NavLink>
+    <NavLink href="/customers" class="side-link"><AppIcon Name="customers" Class="nav-icon" Size="18" /><span>@T["customers"]</span><span class="nav-count">@CustomerCount</span></NavLink>
+    <NavLink href="/invoices" class="side-link"><AppIcon Name="invoices" Class="nav-icon" Size="18" /><span>@T["invoices"]</span></NavLink>
+    <NavLink href="/usage" class="side-link"><AppIcon Name="water" Class="nav-icon" Size="18" /><span>@T["usage"]</span></NavLink>
+    <NavLink href="/reports" class="side-link"><AppIcon Name="reports" Class="nav-icon" Size="18" /><span>@T["reports"]</span></NavLink>
+    <AuthorizeView Roles="Administrator"><Authorized><NavLink href="/settings/tariff" class="side-link"><AppIcon Name="settings" Class="nav-icon" Size="18" /><span>@T["tariffSettings"]</span></NavLink><NavLink href="/users" class="side-link"><AppIcon Name="users" Class="nav-icon" Size="18" /><span>@T["users"]</span></NavLink></Authorized></AuthorizeView>
+</nav>
+<div class="sidebar-spacer"></div>
+<div class="sidebar-footer">
+    <button type="button" class="sidebar-toggle sidebar-toggle-inside" data-sidebar-toggle data-hide-label="@T["hideSidebar"]" data-show-label="@T["showSidebar"]" aria-label="@T["hideSidebar"]" aria-expanded="true" title="@T["hideSidebar"]"><AppIcon Name="sidebar" Size="16" /></button>
+    <div class="server-state"><span class="state-dot"></span><div><b>@T["connected"]</b><small>@T["secure"]</small></div></div><div class="org-mark"><AppIcon Name="water" Size="14" /> <span>@T["brand"]</span></div>
+</div>
+
+@code {
+    private int CustomerCount;
+    private string DisplayName = "";
+    private string GreetingKey = "morningGreeting";
+    private bool IsMorning;
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        CustomerCount = await db.Customers.CountAsync();
+
+        var isArabic = CultureInfo.CurrentUICulture.Name.StartsWith("ar", StringComparison.OrdinalIgnoreCase);
+        IsMorning = DateTime.Now.Hour < 12;
+        GreetingKey = IsMorning ? "morningGreeting" : "eveningGreeting";
+
+        var principal = (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User;
+        var user = await UserManager.GetUserAsync(principal);
+        var name = string.IsNullOrWhiteSpace(user?.DisplayName) ? user?.UserName ?? principal.Identity?.Name ?? "" : user.DisplayName.Trim();
+        var at = name.IndexOf('@');
+        name = at > 0 ? name[..at] : name;
+        DisplayName = user?.ProfileCompleted == true ? user.DisplayName.Trim() : string.Equals(name, "Administrator", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(name, "MOUTFI AHMED", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(name, "موتفي أحمد", StringComparison.Ordinal)
+                ? isArabic ? "موتفي أحمد" : "MOUTFI AHMED"
+                : name;
+    }
+}

@@ -1,0 +1,12 @@
+@page "/Account/Lockout"
+@attribute [AllowAnonymous]
+
+@inject UiText T
+
+<PageTitle>@T["lockedOutTitle"] — @T["brand"]</PageTitle>
+
+<header>
+    <h1 class="text-danger">@T["lockedOutTitle"]</h1>
+    <p class="text-danger" role="alert">@T["lockedOutMessage"]</p>
+</header>
+

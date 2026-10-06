@@ -1,0 +1,108 @@
+@page "/Account/Manage/TwoFactorAuthentication"
+@attribute [Authorize(Policy = "AccountSecurity")]
+
+@using Microsoft.AspNetCore.Identity
+@using Hawdh.Portal.Data
+@inject UiText T
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>@T["twoFactorTitle"] — @T["brand"]</PageTitle>
+
+<div class="account-security-page">
+    <StatusMessage />
+    <header class="account-security-heading">
+        <span class="account-security-icon"><AppIcon Name="shield" Size="19" /></span>
+        <div>
+            <h2>@T["twoFactorTitle"]</h2>
+            <p>@T["twoFactorSetupHint"]</p>
+        </div>
+    </header>
+
+    <section class="security-state-card @(is2faEnabled ? "is-enabled" : "is-disabled")" aria-live="polite">
+        <span class="security-state-mark"><AppIcon Name="@(is2faEnabled ? "check" : "shield")" Size="18" /></span>
+        <div>
+            <b>@T[is2faEnabled ? "twoFactorEnabled" : "twoFactorDisabled"]</b>
+            <p>@T[is2faEnabled ? "twoFactorEnabledHint" : "twoFactorDisabledHint"]</p>
+        </div>
+    </section>
+
+    @if (is2faEnabled && recoveryCodesLeft <= 3)
+    {
+        <div class="account-security-notice @(recoveryCodesLeft == 0 ? "is-critical" : "")" role="status">
+            <AppIcon Name="warning" Size="17" />
+            <div>
+                <b>@(recoveryCodesLeft == 0 ? T["noRecoveryCodes"] : recoveryCodesLeft == 1 ? T["recoveryCodesLeft"] : $"{T["fewRecoveryCodes"]} ({recoveryCodesLeft})")</b>
+                <a href="/Account/Manage/GenerateRecoveryCodes">@T["generateRecoveryCodes"]</a>
+            </div>
+        </div>
+    }
+
+    <section class="account-security-section">
+        <div class="account-security-section-heading">
+            <div><h3>@T["authenticatorApp"]</h3><p>@T["authenticatorAppHint"]</p></div>
+            <span class="security-section-icon"><AppIcon Name="key" Size="17" /></span>
+        </div>
+        <div class="account-security-actions">
+            @if (!hasAuthenticator)
+            {
+                <a href="/Account/Manage/EnableAuthenticator" class="btn-main"><AppIcon Name="plus" Size="15" />@T["addAuthenticator"]</a>
+            }
+            else if (!is2faEnabled)
+            {
+                <a href="/Account/Manage/EnableAuthenticator" class="btn-outline"><AppIcon Name="settings" Size="15" />@T["setupAuthenticator"]</a>
+                <a href="/Account/Manage/ResetAuthenticator" class="btn-outline"><AppIcon Name="refresh" Size="15" />@T["resetAuthenticator"]</a>
+            }
+            else
+            {
+                <a href="/Account/Manage/ResetAuthenticator" class="btn-outline"><AppIcon Name="refresh" Size="15" />@T["resetAuthenticator"]</a>
+            }
+            @if (is2faEnabled)
+            {
+                <a href="/Account/Manage/GenerateRecoveryCodes" class="btn-outline"><AppIcon Name="key" Size="15" />@T["resetRecoveryCodes"]</a>
+                @if (isMachineRemembered)
+                {
+                    <form class="account-security-inline-form" @formname="forget-browser" @onsubmit="OnSubmitForgetBrowserAsync" method="post">
+                        <AntiforgeryToken />
+                        <button type="submit" class="btn-outline"><AppIcon Name="close" Size="15" />@T["forgetBrowser"]</button>
+                    </form>
+                }
+                <a href="/Account/Manage/Disable2fa" class="btn-danger-outline"><AppIcon Name="close" Size="15" />@T["disableTwoFactor"]</a>
+            }
+        </div>
+    </section>
+
+    <p class="account-security-footnote"><AppIcon Name="lock" Size="14" />@T["twoFactorCodesHint"]</p>
+</div>
+
+@code {
+    private bool hasAuthenticator;
+    private int recoveryCodesLeft;
+    private bool is2faEnabled;
+    private bool isMachineRemembered;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await UserManager.GetUserAsync(HttpContext.User);
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        hasAuthenticator = await UserManager.GetAuthenticatorKeyAsync(user) is not null;
+        is2faEnabled = await UserManager.GetTwoFactorEnabledAsync(user);
+        isMachineRemembered = await SignInManager.IsTwoFactorClientRememberedAsync(user);
+        recoveryCodesLeft = await UserManager.CountRecoveryCodesAsync(user);
+    }
+
+    private async Task OnSubmitForgetBrowserAsync()
+    {
+        await SignInManager.ForgetTwoFactorClientAsync();
+        RedirectManager.RedirectToCurrentPageWithStatus(T["browserForgotten"], HttpContext);
+    }
+}

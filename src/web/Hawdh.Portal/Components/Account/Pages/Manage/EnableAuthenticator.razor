@@ -1,0 +1,176 @@
+@page "/Account/Manage/EnableAuthenticator"
+@attribute [Authorize(Policy = "AccountSecurity")]
+
+@using System.ComponentModel.DataAnnotations
+@using System.Text
+@using Microsoft.AspNetCore.Identity
+@using Hawdh.Portal.Data
+@inject UiText T
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IdentityRedirectManager RedirectManager
+@inject ILogger<EnableAuthenticator> Logger
+
+<PageTitle>@T["authenticatorSetupTitle"] — @T["brand"]</PageTitle>
+
+@if (recoveryCodes is not null)
+{
+    <ShowRecoveryCodes RecoveryCodes="recoveryCodes.ToArray()" StatusMessage="@message" />
+}
+else
+{
+    <div class="account-security-page authenticator-setup-page">
+        <StatusMessage Message="@message" />
+        <header class="account-security-heading">
+            <span class="account-security-icon"><AppIcon Name="key" Size="19" /></span>
+            <div><h2>@T["authenticatorSetupTitle"]</h2><p>@T["twoFactorSetupHint"]</p></div>
+        </header>
+
+        <ol class="authenticator-steps">
+            <li><span class="authenticator-step-number">1</span><div><b>@T["authenticatorApp"]</b><p>@T["authenticatorStepOne"]</p></div></li>
+            <li>
+                <span class="authenticator-step-number">2</span>
+                <div class="authenticator-step-content">
+                    <b>@T["authenticatorSecret"]</b>
+                    <p>@T["authenticatorStepTwo"]</p>
+                    <div class="authenticator-key-block"><span>@T["authenticatorSecret"]</span><code dir="ltr">@sharedKey</code></div>
+                    <div class="authenticator-account-meta"><span>@T["authenticatorAccount"] <b dir="ltr">@accountName</b></span><span>@T["authenticatorIssuer"] <b>@T["brand"]</b></span></div>
+                </div>
+            </li>
+            <li>
+                <span class="authenticator-step-number">3</span>
+                <div class="authenticator-step-content">
+                    <b>@T["verificationCode"]</b>
+                    <p>@T["authenticatorStepThree"]</p>
+                    <EditForm Model="Input" FormName="send-code" OnValidSubmit="OnValidSubmitAsync" method="post" class="authenticator-verify-form">
+                        <DataAnnotationsValidator />
+                        <div class="field">
+                            <label for="authenticator-code">@T["verificationCode"]</label>
+                            <InputText @bind-Value="Input.Code" id="authenticator-code" class="form-control authenticator-code-input" autocomplete="one-time-code" inputmode="numeric" maxlength="7" placeholder="000000" dir="ltr" />
+                            <ValidationMessage For="() => Input.Code" class="field-error" />
+                        </div>
+                        <ValidationSummary class="validation-errors" role="alert" />
+                        <div class="account-security-actions">
+                            <button type="submit" class="btn-main"><AppIcon Name="check" Size="16" />@T["verifyAndEnable"]</button>
+                            <a href="/Account/Manage/TwoFactorAuthentication" class="btn-outline">@T["cancel"]</a>
+                        </div>
+                    </EditForm>
+                </div>
+            </li>
+        </ol>
+        <p class="account-security-footnote"><AppIcon Name="lock" Size="14" />@T["twoFactorCodesHint"]</p>
+    </div>
+}
+
+@code {
+    private string? message;
+    private ApplicationUser? user;
+    private string? sharedKey;
+    private string? accountName;
+    private IEnumerable<string>? recoveryCodes;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new();
+        user = await UserManager.GetUserAsync(HttpContext.User);
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        if (await UserManager.GetTwoFactorEnabledAsync(user))
+        {
+            RedirectManager.RedirectToWithStatus("/Account/Manage/TwoFactorAuthentication", T["authenticatorAlreadyEnabled"], HttpContext);
+            return;
+        }
+
+        await LoadSharedKeyAsync(user);
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        if (await UserManager.IsLockedOutAsync(user))
+        {
+            message = T["accountTemporarilyLocked"];
+            return;
+        }
+
+        var verificationCode = Input.Code.Replace(" ", string.Empty, StringComparison.Ordinal).Replace("-", string.Empty, StringComparison.Ordinal);
+        var isValid = await UserManager.VerifyTwoFactorTokenAsync(user, UserManager.Options.Tokens.AuthenticatorTokenProvider, verificationCode);
+        if (!isValid)
+        {
+            var failedAttempt = await UserManager.AccessFailedAsync(user);
+            if (!failedAttempt.Succeeded)
+                Logger.LogWarning("Failed to record an invalid authenticator setup attempt for user {UserId}.", user.Id);
+            message = await UserManager.IsLockedOutAsync(user) ? T["accountTemporarilyLocked"] : T["invalidAuthenticatorCode"];
+            return;
+        }
+
+        await UserManager.ResetAccessFailedCountAsync(user);
+        var enabled = await UserManager.SetTwoFactorEnabledAsync(user, true);
+        if (!enabled.Succeeded)
+        {
+            Logger.LogError("Could not enable two-factor authentication for user {UserId}: {Errors}.", user.Id, string.Join(",", enabled.Errors.Select(error => error.Code)));
+            message = T["authenticatorEnableFailed"];
+            return;
+        }
+
+        await SignInManager.RefreshSignInAsync(user);
+        Logger.LogInformation("User with ID '{UserId}' has enabled 2FA with an authenticator app.", user.Id);
+        message = T["authenticatorEnabledMessage"];
+
+        if (await UserManager.CountRecoveryCodesAsync(user) == 0)
+        {
+            recoveryCodes = await UserManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
+            if (recoveryCodes is null)
+            {
+                Logger.LogError("Could not generate two-factor recovery codes for user {UserId}.", user.Id);
+                RedirectManager.RedirectToWithStatus("/Account/Manage/TwoFactorAuthentication", T["authenticatorEnabledMessage"], HttpContext);
+            }
+        }
+        else
+        {
+            RedirectManager.RedirectToWithStatus("/Account/Manage/TwoFactorAuthentication", message, HttpContext);
+        }
+    }
+
+    private async Task LoadSharedKeyAsync(ApplicationUser currentUser)
+    {
+        var unformattedKey = await UserManager.GetAuthenticatorKeyAsync(currentUser);
+        if (string.IsNullOrWhiteSpace(unformattedKey))
+        {
+            await UserManager.ResetAuthenticatorKeyAsync(currentUser);
+            unformattedKey = await UserManager.GetAuthenticatorKeyAsync(currentUser);
+        }
+
+        sharedKey = FormatKey(unformattedKey ?? string.Empty);
+        accountName = await UserManager.GetEmailAsync(currentUser) ?? currentUser.UserName ?? string.Empty;
+    }
+
+    private static string FormatKey(string key)
+    {
+        return string.Join(' ', Enumerable.Range(0, (key.Length + 3) / 4)
+            .Select(index => key.Substring(index * 4, Math.Min(4, key.Length - index * 4))))
+            .ToLowerInvariant();
+    }
+
+    private sealed class InputModel
+    {
+        [LocalizedRequired]
+        [LocalizedAuthenticatorCode]
+        public string Code { get; set; } = string.Empty;
+    }
+}

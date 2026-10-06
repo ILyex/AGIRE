@@ -1,0 +1,8 @@
+@page "/not-found"
+@attribute [AllowAnonymous]
+@layout MainLayout
+@inject UiText T
+
+<PageTitle>@T["notFoundTitle"] — @T["brand"]</PageTitle>
+<h1 class="page-title">@T["notFoundTitle"]</h1>
+<p>@T["notFoundMessage"]</p>

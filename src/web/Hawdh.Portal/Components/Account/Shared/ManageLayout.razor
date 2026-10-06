@@ -1,0 +1,19 @@
+@inherits LayoutComponentBase
+@layout Hawdh.Portal.Components.Layout.MainLayout
+@inject UiText T
+
+<section class="account-settings-page">
+    <header class="account-settings-header">
+        <span class="account-settings-kicker"><AppIcon Name="settings" Size="14" /> @T["accountSettings"]</span>
+        <h1>@T["accountSettings"]</h1>
+        <p>@T["accountSettingsHint"]</p>
+    </header>
+    <div class="account-settings-grid">
+        <aside class="account-settings-sidebar" aria-label="@T["accountSettings"]">
+            <ManageNavMenu />
+        </aside>
+        <main class="account-settings-content">
+            @Body
+        </main>
+    </div>
+</section>

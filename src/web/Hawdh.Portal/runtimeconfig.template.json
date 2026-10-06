@@ -1,0 +1,8 @@
+{
+  "configProperties": {
+    "System.GC.Server": false,
+    "System.GC.Concurrent": true,
+    "System.Runtime.TieredCompilation": true,
+    "System.Runtime.TieredCompilation.QuickJit": true
+  }
+}

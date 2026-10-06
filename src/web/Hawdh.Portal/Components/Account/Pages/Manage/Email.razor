@@ -1,0 +1,165 @@
+@page "/Account/Manage/Email"
+@attribute [Authorize(Policy = "AdminMfa")]
+
+@using System.ComponentModel.DataAnnotations
+@using System.Text
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+@using Hawdh.Portal.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject IEmailSender<ApplicationUser> EmailSender
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+@inject UiText T
+@inject ILogger<Email> Logger
+
+<PageTitle>@T["emailSettingsTitle"] — @T["brand"]</PageTitle>
+
+<StatusMessage Message="@message" />
+<section class="account-form-page">
+    <header class="account-form-heading">
+        <span class="account-form-icon"><AppIcon Name="mail" Size="18" /></span>
+        <div><h2>@T["emailSettingsTitle"]</h2><p>@T["emailSettingsHint"]</p></div>
+    </header>
+    <div class="account-form-stack">
+        <form class="account-inline-form" @onsubmit="OnSendEmailVerificationAsync" @formname="send-verification" id="send-verification-form" method="post">
+            <AntiforgeryToken />
+        </form>
+        <EditForm class="account-form-stack" Model="Input" FormName="change-email" OnValidSubmit="OnValidSubmitAsync" method="post">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+            @if (isEmailConfirmed)
+            {
+                <div class="account-readonly-field email-readonly-field">
+                    <label for="email">@T["currentEmail"]</label>
+                    <input type="email" value="@email" id="email" class="form-control" autocomplete="email" disabled />
+                    <span class="account-field-status" title="@T["emailConfirmed"]"><AppIcon Name="check" Size="16" /></span>
+                </div>
+            }
+            else
+            {
+                <div class="account-readonly-field">
+                    <label for="email">@T["currentEmail"]</label>
+                    <input type="email" value="@email" id="email" class="form-control" autocomplete="email" disabled />
+                    <button type="submit" class="btn-outline account-verify-button" form="send-verification-form">@T["sendVerificationEmail"]</button>
+                </div>
+            }
+            <div class="account-field">
+                <label for="Input.NewEmail">@T["newEmail"]</label>
+                <InputText type="email" @bind-Value="Input.NewEmail" id="Input.NewEmail" class="form-control" autocomplete="email" aria-required="true" placeholder="@T["newEmailHint"]" />
+                <ValidationMessage For="() => Input.NewEmail" class="text-danger" />
+            </div>
+            <button type="submit" class="btn-main account-form-submit"><AppIcon Name="mail" Size="16" />@T["requestEmailChange"]</button>
+        </EditForm>
+    </div>
+</section>
+
+@code {
+    private string? message;
+    private ApplicationUser? user;
+    private string? email;
+    private bool isEmailConfirmed;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm(FormName = "change-email")]
+    private InputModel Input { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new();
+
+        user = await UserManager.GetUserAsync(HttpContext.User);
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        email = await UserManager.GetEmailAsync(user);
+        isEmailConfirmed = await UserManager.IsEmailConfirmedAsync(user);
+
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        if (Input.NewEmail is null || string.Equals(Input.NewEmail.Trim(), email, StringComparison.OrdinalIgnoreCase))
+        {
+            message = T["emailUnchanged"];
+            return;
+        }
+
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        var existingUser = await UserManager.FindByEmailAsync(Input.NewEmail.Trim());
+        if (existingUser is not null && existingUser.Id != user.Id)
+        {
+            message = T["emailAlreadyInUse"];
+            return;
+        }
+
+        var userId = await UserManager.GetUserIdAsync(user);
+        var code = await UserManager.GenerateChangeEmailTokenAsync(user, Input.NewEmail.Trim());
+        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+        var callbackUrl = NavigationManager.GetUriWithQueryParameters(
+            NavigationManager.ToAbsoluteUri("Account/ConfirmEmailChange").AbsoluteUri,
+            new Dictionary<string, object?> { ["userId"] = userId, ["email"] = Input.NewEmail.Trim(), ["code"] = code });
+
+        try
+        {
+            await EmailSender.SendConfirmationLinkAsync(user, Input.NewEmail.Trim(), callbackUrl);
+            message = T["emailChangeLinkSent"];
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to send an email change confirmation.");
+            message = T["emailDeliveryFailed"];
+        }
+    }
+
+    private async Task OnSendEmailVerificationAsync()
+    {
+        if (email is null)
+        {
+            return;
+        }
+
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        var userId = await UserManager.GetUserIdAsync(user);
+        var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
+        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+        var callbackUrl = NavigationManager.GetUriWithQueryParameters(
+            NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
+            new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code });
+
+        try
+        {
+            await EmailSender.SendConfirmationLinkAsync(user, email, callbackUrl);
+            message = T["verificationEmailSent"];
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to send an email verification message.");
+            message = T["emailDeliveryFailed"];
+        }
+    }
+
+    private sealed class InputModel
+    {
+        [LocalizedRequired]
+        [LocalizedEmailAddress]
+        [Display(Name = "New email")]
+        public string? NewEmail { get; set; }
+    }
+}

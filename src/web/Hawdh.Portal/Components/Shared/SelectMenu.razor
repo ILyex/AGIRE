@@ -1,0 +1,58 @@
+@typeparam TValue
+@using System.Linq.Expressions
+@using Microsoft.AspNetCore.Components.Forms
+
+<div class="app-select @(Open ? "is-open" : "")" @onkeydown="HandleKeyDown">
+    <button type="button" class="app-select-trigger @Class" aria-label="@Label" aria-haspopup="listbox" aria-expanded="@Open" @onclick="Toggle">
+        <span class="app-select-value">@(SelectedOption?.Label ?? Placeholder)</span>
+        <AppIcon Name="chevronDown" Class="app-select-chevron" Size="15" />
+    </button>
+    @if (Open)
+    {
+        <div class="app-select-scrim" @onclick="Close"></div>
+        <div class="app-select-menu" role="listbox" aria-label="@Label">
+            @foreach (var option in Options)
+            {
+                var item = option;
+                var selected = item.Value == SelectedKey;
+                <button type="button" role="option" aria-selected="@selected" class="app-select-option @(selected ? "selected" : "")" @onclick="() => Choose(item.Value)">
+                    <span>@item.Label</span>
+                    @if (selected) { <AppIcon Name="check" Size="15" /> }
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public TValue Value { get; set; } = default!;
+    [Parameter] public EventCallback<TValue> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<TValue>>? ValueExpression { get; set; }
+    [Parameter, EditorRequired] public IReadOnlyList<SelectOption> Options { get; set; } = [];
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "—";
+    [Parameter] public string? Class { get; set; }
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+
+    private bool Open;
+    private string SelectedKey => Value is null ? "" : Convert.ToString(Value, CultureInfo.InvariantCulture) ?? "";
+    private SelectOption? SelectedOption => Options.FirstOrDefault(option => option.Value == SelectedKey);
+
+    private void Toggle() => Open = !Open;
+    private void Close() => Open = false;
+    private void HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape") Open = false;
+        else if (args.Key == "ArrowDown") Open = true;
+    }
+
+    private async Task Choose(string rawValue)
+    {
+        if (!BindConverter.TryConvertTo<TValue>(rawValue, CultureInfo.InvariantCulture, out var converted)) return;
+        Value = converted;
+        await ValueChanged.InvokeAsync(converted);
+        if (ValueExpression is not null && EditContext is not null)
+            EditContext.NotifyFieldChanged(FieldIdentifier.Create(ValueExpression));
+        Open = false;
+    }
+}

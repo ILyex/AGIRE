@@ -1,0 +1,51 @@
+# Build output
+bin/
+obj/
+dist/
+build/
+artifacts/
+coverage/
+node_modules/
+.next/
+.vite/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+!deploy/.env.production.example
+appsettings.Local.json
+appsettings.*.Local.json
+secrets.json
+*.pfx
+*.pem
+*.key
+
+# Customer records, databases, exports, and backups
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+*.bak
+*.backup
+*.dump
+*.sql.gz
+exports/
+backups/
+customer-data/
+sample-data/private/
+
+# IDE / OS
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+Thumbs.db
+.DS_Store
+
+# Logs and temporary files
+*.log
+tmp/
+temp/

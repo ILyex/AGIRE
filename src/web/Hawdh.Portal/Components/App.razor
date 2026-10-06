@@ -1,0 +1,42 @@
+@using System.Globalization
+@inject IHttpContextAccessor HttpContextAccessor
+@{
+    var culture = CultureInfo.CurrentUICulture.Name;
+    var rtl = culture.StartsWith("ar", StringComparison.OrdinalIgnoreCase);
+    var savedTheme = HttpContextAccessor.HttpContext?.Request.Cookies["hawdh-theme"];
+    var theme = savedTheme is "dark" or "light" ? savedTheme : null;
+}
+<!DOCTYPE html>
+<html lang="@culture" dir="@(rtl ? "rtl" : "ltr")" data-theme="@theme">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="AGIRE — gestion intégrée des ressources en eau, des clients et de la facturation." />
+    <link rel="icon" type="image/png" href="/images/agire-logo.png?v=20261006-7" />
+    <link rel="apple-touch-icon" href="/images/agire-logo.png?v=20261006-7" />
+    <base href="/" />
+    <ResourcePreloader />
+    @if (rtl)
+    {
+        <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.rtl.min.css"]" />
+    }
+    else
+    {
+        <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
+    }
+    <link rel="stylesheet" href="@Assets["fonts.css"]" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["theme.css"]" />
+    <link rel="stylesheet" href="@Assets["fonts-overrides.css"]" />
+    <link rel="stylesheet" href="@Assets["Hawdh.Portal.styles.css"]" />
+    <script>try{const d=document.documentElement.dataset.theme;const c=document.cookie.split(';').map(x=>x.trim()).find(x=>x.startsWith('hawdh-theme='))?.split('=')[1];const t=c==='dark'||c==='light'?c:d==='dark'||d==='light'?d:localStorage.getItem('hawdh-theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch{}</script>
+    <ImportMap />
+    <HeadOutlet />
+</head>
+<body>
+    <Routes />
+    <ReconnectModal />
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script src="@Assets["theme.js"]"></script>
+</body>
+</html>

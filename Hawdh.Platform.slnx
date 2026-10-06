@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/web/" />
+  <Project Path="src/web/Hawdh.Portal/Hawdh.Portal.csproj" />
+  <Folder Name="/tests/" />
+  <Project Path="tests/Hawdh.Portal.Tests/Hawdh.Portal.Tests.csproj" />
+</Solution>

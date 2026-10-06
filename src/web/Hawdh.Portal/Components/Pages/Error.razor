@@ -1,0 +1,33 @@
+@page "/Error"
+@attribute [AllowAnonymous]
+@using System.Diagnostics
+@inject UiText T
+
+<PageTitle>@T["loginErrorPageTitle"] — @T["brand"]</PageTitle>
+
+<h1>@T["loginErrorPageTitle"]</h1>
+<h2>@T["loginErrorPageMessage"]</h2>
+
+@if (ShowRequestId)
+{
+    <p><strong>@T["requestId"]:</strong> <code>@RequestId</code></p>
+}
+
+@if (IsDevelopment)
+{
+    <h3>@T["errorDetailsDevelopment"]</h3>
+    <p>@T["errorDetailsHint"]</p>
+    <p><strong>@T["developmentWarning"]</strong></p>
+}
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+    private bool IsDevelopment => Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

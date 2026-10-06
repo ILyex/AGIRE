@@ -1,0 +1,97 @@
+services:
+  database:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hawdh}
+      POSTGRES_USER: ${POSTGRES_USER:-hawdh_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/.env.production}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - database-private
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  web:
+    build:
+      context: ./src/web/Hawdh.Portal
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Database__Provider: PostgreSQL
+      AllowedHosts: ${PUBLIC_HOST:?Set PUBLIC_HOST in deploy/.env.production}
+      ReverseProxy__KnownProxy: 172.31.245.2
+      DataProtection__KeysPath: /var/lib/hawdh/keys
+      ConnectionStrings__DefaultConnection: Host=database;Port=5432;Database=${POSTGRES_DB:-hawdh};Username=${POSTGRES_USER:-hawdh_app};Password=${POSTGRES_PASSWORD}
+      SeedAdmin__Email: ${SEED_ADMIN_EMAIL:-}
+      SeedAdmin__Password: ${SEED_ADMIN_PASSWORD:-}
+      Smtp__Host: ${SMTP_HOST:?Set SMTP_HOST in deploy/.env.production}
+      Smtp__Port: ${SMTP_PORT:-587}
+      Smtp__Security: ${SMTP_SECURITY:-StartTls}
+      Smtp__UserName: ${SMTP_USERNAME:-}
+      Smtp__Password: ${SMTP_PASSWORD:-}
+      Smtp__FromAddress: ${SMTP_FROM_ADDRESS:?Set SMTP_FROM_ADDRESS in deploy/.env.production}
+      Smtp__FromName: ${SMTP_FROM_NAME:-AGIRE TAIRET}
+    volumes:
+      - data-protection-keys:/var/lib/hawdh/keys
+    networks:
+      - database-private
+      - edge:
+          ipv4_address: 172.31.245.3
+    expose:
+      - "8080"
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?Set PUBLIC_HOST in deploy/.env.production}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      edge:
+        ipv4_address: 172.31.245.2
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  postgres-data:
+  data-protection-keys:
+  caddy-data:
+  caddy-config:
+
+networks:
+  database-private:
+    internal: true
+  edge:
+    ipam:
+      config:
+        - subnet: 172.31.245.0/24

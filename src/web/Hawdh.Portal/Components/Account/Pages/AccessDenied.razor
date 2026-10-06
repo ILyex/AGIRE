@@ -1,0 +1,32 @@
+@page "/Account/AccessDenied"
+@attribute [AllowAnonymous]
+
+@inject UiText T
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>@T["accessDeniedTitle"] — @T["brand"]</PageTitle>
+
+<header>
+    <h1 class="text-danger">@T["accessDeniedTitle"]</h1>
+    @if (needsAdminMfa)
+    {
+        <p>@T["adminTwoFactorRequired"]</p>
+        <a class="btn-main" href="/Account/Manage/TwoFactorAuthentication">@T["configureTwoFactor"]</a>
+    }
+    else
+    {
+        <p class="text-danger">@T["accessDeniedMessage"]</p>
+    }
+</header>
+
+@code {
+    private bool needsAdminMfa;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        needsAdminMfa = state.User.IsInRole("Administrator")
+            && !state.User.HasClaim("hawdh:mfa", "true");
+    }
+}
+

@@ -1,0 +1,184 @@
+@page "/customers"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Administrator,Billing,ReadOnly", Policy = "AdminMfa")]
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject UiText T
+
+<PageTitle>@T["customers"] — @T["brand"]</PageTitle>
+<div class="page-heading"><div><h1 class="page-title">@T["customerDirectory"]</h1><p class="page-description">@T["customerHint"]</p></div><div class="heading-actions customer-heading-actions"><button type="button" class="btn-outline" title="@T["previewCustomers"]" @onclick="OpenReport"><AppIcon Name="preview" Size="16" /><span>@T["previewCustomers"]</span></button><AuthorizeView Roles="Administrator,Billing"><Authorized><button class="btn-main" @onclick="NewCustomer"><AppIcon Name="plus" Size="16" /><span>@T["newCustomer"]</span></button></Authorized></AuthorizeView></div></div>
+
+<section class="panel table-panel">
+    <div class="table-toolbar"><div><h2 class="panel-title">@T["customers"]</h2><span class="table-count">@Rows.Count @T["customers"]</span></div><div class="table-toolbar-actions"><input class="search-box" placeholder="⌕  @T["searchCustomers"]" @bind="Query" @bind:event="oninput" /><SelectMenu TValue="string" Label="@T["allStatuses"]" Options="CustomerFilterOptions" @bind-Value="Filter" /></div></div>
+    @if (FilteredRows.Count == 0)
+    {
+        <div class="empty-state"><div class="empty-icon"><AppIcon Name="customers" Size="21" /></div><b>@T["noCustomers"]</b><span>@T["noCustomersHint"]</span></div>
+    }
+    else
+    {
+        <div class="table-scroll"><table><thead><tr><th>@T["customer"]</th><th>@T["meterNumber"]</th><th>@T["subscriptionYear"]</th><th>@T["phone"]</th><th>@T["location"]</th><th>@T["balance"]</th><th>@T["accountState"]</th><th>@T["actions"]</th></tr></thead><tbody>
+        @foreach (var row in FilteredRows)
+        {
+            <tr><td><div class="person-cell"><span class="person-avatar">@row.Customer.Name[..1]</span><span><span class="person-name">@row.Customer.Name</span><span class="secondary-text">@row.Customer.Code</span></span></div></td><td>@(string.IsNullOrWhiteSpace(row.Customer.MeterNumber) ? "—" : row.Customer.MeterNumber)</td><td>@(row.Customer.SubscriptionYear?.ToString() ?? "—")</td><td>@(string.IsNullOrWhiteSpace(row.Customer.Phone) ? "—" : row.Customer.Phone)</td><td>@(string.IsNullOrWhiteSpace(row.Customer.Location) ? "—" : row.Customer.Location)</td><td class="money">@row.Balance</td><td><span class="status-pill @(row.Customer.IsActive ? "" : "due")">● @(row.Customer.IsActive ? T["active"] : T["inactive"])</span></td><td><AuthorizeView Roles="Administrator,Billing"><Authorized><div class="table-actions"><button class="small-icon-btn" @onclick="() => EditCustomer(row.Customer)">@T["edit"]</button><button class="small-icon-btn" @onclick="() => ToggleCustomer(row.Customer)">@(row.Customer.IsActive ? T["deactivate"] : T["activate"])</button></div></Authorized><NotAuthorized>—</NotAuthorized></AuthorizeView></td></tr>
+        }
+        </tbody></table></div>
+    }
+</section>
+@if (ReportPreviewOpen)
+{
+    <div class="modal-backdrop customer-report-backdrop" @onclick="CloseReport">
+        <section class="modal-card customer-report-modal" role="dialog" aria-modal="true" aria-labelledby="customer-report-title" @onclick:stopPropagation="true">
+            <div class="customer-report-actions"><button type="button" class="modal-close" aria-label="@T["close"]" @onclick="CloseReport"><AppIcon Name="close" Size="18" /></button><button type="button" class="btn-outline" @onclick="PrintCustomerReport"><AppIcon Name="print" Size="16" />@T["printReport"]</button><button type="button" class="btn-main" @onclick="DownloadCustomerReport"><AppIcon Name="spreadsheet" Size="16" />@T["exportCustomersExcel"]</button></div>
+            <div class="customer-print-sheet" id="customer-report-print">
+                <header class="customer-report-titlebar"><div><span class="report-kicker">@T["brand"]</span><h2 id="customer-report-title">@T["customerReport"]</h2></div><div class="customer-report-issued"><small>@T["reportGeneratedAt"]</small><b>@DateTime.Now.ToString("d", CultureInfo.CurrentCulture)</b></div></header>
+                <div class="customer-report-table-wrap"><table class="customer-report-table"><thead><tr><th>@T["rowNumber"]</th><th>@T["customer"]</th><th>@T["meterNumber"]</th><th>@T["subscriptionYear"]</th><th>@T["latestReadingPeriod"]</th><th>@T["previousReading"]</th><th>@T["currentReading"]</th><th>@T["consumption"]</th><th>@T["balance"]</th><th>@T["status"]</th></tr></thead><tbody>
+                    @{ var rowNumber = 0; }
+                    @foreach (var item in ReportRows)
+                    {
+                        rowNumber++;
+                        <tr><td>@rowNumber</td><td><b>@item.Customer.Name</b><small>@item.Customer.Code · @item.Customer.Phone</small></td><td>@(item.Customer.MeterNumber ?? "—")</td><td>@(item.Customer.SubscriptionYear?.ToString() ?? "—")</td><td>@(item.Reading?.Period.ToString("yyyy-MM") ?? T["noReadingRecorded"])</td><td>@(item.Reading is null ? "—" : $"{item.Reading.PreviousReading:N3} m³")<small>@(item.Reading?.PreviousReadOn.ToString("d", CultureInfo.CurrentCulture) ?? "")</small></td><td>@(item.Reading is null ? "—" : $"{item.Reading.CurrentReading:N3} m³")<small>@(item.Reading?.CurrentReadOn.ToString("d", CultureInfo.CurrentCulture) ?? "")</small></td><td>@(item.Reading is null ? "—" : $"{item.Reading.Consumption:N3} m³")</td><td>@item.DebtText</td><td><span class="status-pill @(item.Customer.IsActive ? "" : "due")">@((item.Customer.IsActive ? T["active"] : T["inactive"]))</span></td></tr>
+                    }
+                </tbody><tfoot><tr><th colspan="6">@T["customerCount"]: @ReportRows.Count.ToString("N0")</th><th colspan="3">@T["totalDebt"]: @Money(ReportTotalDebt)</th><th>@T["debtor"]: @ReportRows.Count(x => x.HasDebt).ToString("N0")</th></tr>
+                    @if (!string.IsNullOrWhiteSpace(OtherCurrencyDebtTotals)) { <tr><td colspan="10">@T["otherCurrencyDebts"]: @OtherCurrencyDebtTotals</td></tr> }
+                </tfoot></table></div>
+                <footer class="customer-report-footer"><span>@T["systemName"] · @T["brand"]</span><span>@DateTime.Now.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture)</span></footer>
+            </div>
+        </section>
+    </div>
+}
+@if (!string.IsNullOrEmpty(Toast)) { <div class="toast-host" role="status">@Toast</div> }
+
+@if (ModalOpen)
+{
+    <div class="modal-backdrop" @onclick="CloseModal"><section class="modal-card" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+        <div class="modal-heading"><h2>@(Editing is null ? T["newCustomer"] : T["edit"])</h2><button type="button" class="modal-close" aria-label="@T["close"]" @onclick="CloseModal"><AppIcon Name="close" Size="18" /></button></div>
+        <EditForm Model="Form" OnValidSubmit="SaveCustomer"><DataAnnotationsValidator /><ValidationSummary class="validation-errors" />
+            <div class="form-grid"><div class="field full"><label>@T["name"] *</label><InputText class="form-control" @bind-Value="Form.Name" maxlength="180" /></div><div class="field"><label>@T["meterNumber"]</label><InputText class="form-control" @bind-Value="Form.MeterNumber" maxlength="80" autocomplete="off" /></div><div class="field"><label>@T["subscriptionYear"]</label><InputNumber class="form-control" @bind-Value="Form.SubscriptionYear" min="1900" max="@DateTime.Today.Year" /></div><div class="field"><label>@T["phone"]</label><InputText class="form-control" @bind-Value="Form.Phone" maxlength="40" /></div><div class="field"><label>@T["location"]</label><InputText class="form-control" @bind-Value="Form.Location" maxlength="180" /></div><div class="field full"><label>@T["notes"]</label><InputTextArea class="form-control" @bind-Value="Form.Notes" maxlength="2000" /></div></div>
+            <div class="modal-footer"><button class="btn-main" type="submit">@T["save"]</button><button class="btn-outline" type="button" @onclick="CloseModal">@T["cancel"]</button></div>
+        </EditForm>
+    </section></div>
+}
+
+@if (ConfirmingCustomer is not null)
+{
+    <div class="modal-backdrop" @onclick="CancelStatusChange">
+        <section class="modal-card confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="customer-status-title" @onclick:stopPropagation="true">
+            <div class="confirm-emblem" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 21 19H3L12 3Z"/><path d="M12 9v4m0 3h.01"/></svg></div>
+            <h2 id="customer-status-title">@T["confirmAction"]</h2>
+            <p>@T["confirmDeactivate"]</p>
+            <div class="modal-footer confirm-actions"><button class="btn-danger" type="button" @onclick="ConfirmStatusChange">@T["confirmAction"]</button><button class="btn-outline" type="button" @onclick="CancelStatusChange">@T["cancel"]</button></div>
+        </section>
+    </div>
+}
+
+@code {
+    private List<CustomerRow> Rows = [];
+    private Dictionary<Guid, MeterReading> LatestReadings = [];
+    private List<CustomerReportRow> ReportRows => Rows.Select(row =>
+    {
+        LatestReadings.TryGetValue(row.Customer.Id, out var reading);
+        var debtParts = row.Customer.Invoices.GroupBy(i => i.CurrencyCode, StringComparer.OrdinalIgnoreCase)
+            .Select(group => (Currency: group.Key, Amount: group.Sum(i => Math.Max(0, i.Amount - i.Payments.Sum(p => p.Amount)))))
+            .Where(item => item.Amount > 0).OrderBy(item => item.Currency == "DZD" ? 0 : 1).ThenBy(item => item.Currency).ToList();
+        var debtText = debtParts.Count == 0 ? T["noDebt"] : string.Join(" · ", debtParts.Select(item => $"{item.Amount:N2} {Currency(item.Currency)}"));
+        return new CustomerReportRow(row.Customer, reading, debtText, debtParts.Count > 0);
+    }).OrderBy(item => item.Customer.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+    private Dictionary<string, decimal> ReportDebtTotals => Rows.SelectMany(row => row.Customer.Invoices)
+        .GroupBy(invoice => invoice.CurrencyCode, StringComparer.OrdinalIgnoreCase)
+        .ToDictionary(group => group.Key, group => group.Sum(invoice => Math.Max(0, invoice.Amount - invoice.Payments.Sum(payment => payment.Amount))), StringComparer.OrdinalIgnoreCase);
+    private decimal ReportTotalDebt => ReportDebtTotals.GetValueOrDefault("DZD");
+    private string OtherCurrencyDebtTotals => string.Join(" · ", ReportDebtTotals.Where(item => item.Key != "DZD" && item.Value > 0)
+        .OrderBy(item => item.Key).Select(item => $"{item.Value:N2} {Currency(item.Key)}"));
+    private List<CustomerRow> FilteredRows => Rows.Where(row =>
+        (Filter == "all" || Filter == "active" && row.Customer.IsActive || Filter == "inactive" && !row.Customer.IsActive || Filter == "debtor" && row.HasBalance) &&
+        (string.IsNullOrWhiteSpace(Query) || $"{row.Customer.Code} {row.Customer.Name} {row.Customer.MeterNumber} {row.Customer.SubscriptionYear} {row.Customer.Phone} {row.Customer.Location}".Contains(Query.Trim(), StringComparison.CurrentCultureIgnoreCase))).ToList();
+    private string Query = "", Filter = "all", Toast = "";
+    private bool ModalOpen, ReportPreviewOpen;
+    private IReadOnlyList<SelectOption> CustomerFilterOptions => [new("all", T["allStatuses"]), new("active", T["active"]), new("inactive", T["inactive"]), new("debtor", T["debtor"])];
+    private Customer? ConfirmingCustomer;
+    private Customer? Editing;
+    private CustomerForm Form = new();
+
+    protected override Task OnInitializedAsync() => Reload();
+    private async Task Reload()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var customers = await db.Customers.AsNoTracking().AsSplitQuery().Include(c => c.Invoices).ThenInclude(i => i.Payments).OrderBy(c => c.Name).ToListAsync();
+        var latestReadings = await db.MeterReadings.AsNoTracking().OrderByDescending(r => r.Period).ThenByDescending(r => r.CurrentReadOn).ToListAsync();
+        LatestReadings = latestReadings.GroupBy(r => r.CustomerId).ToDictionary(g => g.Key, g => g.First());
+        Rows = customers.Select(c => new CustomerRow(c, MoneySummary(c.Invoices.GroupBy(i => i.CurrencyCode).ToDictionary(g => g.Key, g => g.Sum(i => Math.Max(0, i.Amount - i.Payments.Sum(p => p.Amount))))), c.Invoices.Any(i => i.Amount > 0 && i.Amount > i.Payments.Sum(p => p.Amount)))).ToList();
+    }
+    private string Currency(string code) => code == "DZD" ? T["currency"] : code;
+    private string Money(decimal amount) => $"{amount:N2} {T["currency"]}";
+    private string MoneySummary(Dictionary<string, decimal> amounts) => amounts.Count == 0 ? $"0.00 {T["currency"]}" : string.Join(" · ", amounts.OrderBy(x => x.Key == "DZD" ? 0 : 1).ThenBy(x => x.Key).Select(x => $"{x.Value:N2} {Currency(x.Key)}"));
+    private void NewCustomer() { Editing = null; Form = new(); ModalOpen = true; }
+    private void OpenReport() => ReportPreviewOpen = true;
+    private void CloseReport() => ReportPreviewOpen = false;
+    private void DownloadCustomerReport() => Navigation.NavigateTo("/customers/export.xlsx", forceLoad: true);
+    private async Task PrintCustomerReport()
+    {
+        var opened = await JS.InvokeAsync<bool>("agirePrintElement", "customer-report-print", T["customerReport"]);
+        if (!opened) Toast = T["printPopupBlocked"];
+    }
+    private void EditCustomer(Customer customer) { Editing = customer; Form = new() { Name = customer.Name, MeterNumber = customer.MeterNumber, SubscriptionYear = customer.SubscriptionYear, Phone = customer.Phone, Location = customer.Location, Notes = customer.Notes }; ModalOpen = true; }
+    private void CloseModal() => ModalOpen = false;
+    private async Task SaveCustomer()
+    {
+        if (!await CanEdit()) { Toast = T["noAccess"]; return; }
+        if (Form.SubscriptionYear is int year && (year < 1900 || year > DateTime.Today.Year)) { Toast = T["invalidSubscriptionYear"]; return; }
+        var user = (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User.Identity?.Name ?? "";
+        await using var db = await DbFactory.CreateDbContextAsync();
+        Customer customer;
+        if (Editing is null)
+        {
+            customer = new Customer { Code = "CUS-" + Guid.NewGuid().ToString("N")[..12].ToUpperInvariant(), CreatedBy = user };
+            db.Customers.Add(customer);
+        }
+        else customer = await db.Customers.SingleAsync(c => c.Id == Editing.Id);
+        customer.Name = Form.Name.Trim(); customer.MeterNumber = Form.MeterNumber?.Trim(); customer.SubscriptionYear = Form.SubscriptionYear; customer.Phone = Form.Phone?.Trim(); customer.Location = Form.Location?.Trim(); customer.Notes = Form.Notes?.Trim();
+        db.AuditEntries.Add(new AuditEntry { Actor = user, Action = Editing is null ? "CustomerCreated" : "CustomerUpdated", EntityType = "Customer", EntityId = customer.Id.ToString(), Details = customer.Code });
+        await db.SaveChangesAsync(); ModalOpen = false; Toast = Editing is null ? T["customerAdded"] : T["customerSaved"]; await Reload();
+    }
+    private async Task ToggleCustomer(Customer customer)
+    {
+        if (!await CanEdit()) { Toast = T["noAccess"]; return; }
+        if (customer.IsActive) { ConfirmingCustomer = customer; return; }
+        await ChangeCustomerStatus(customer);
+    }
+    private void CancelStatusChange() => ConfirmingCustomer = null;
+    private async Task ConfirmStatusChange()
+    {
+        if (ConfirmingCustomer is null) return;
+        if (!await CanEdit()) { ConfirmingCustomer = null; Toast = T["noAccess"]; return; }
+        var customer = ConfirmingCustomer;
+        ConfirmingCustomer = null;
+        await ChangeCustomerStatus(customer);
+    }
+    private async Task ChangeCustomerStatus(Customer customer)
+    {
+        if (!await CanEdit()) { Toast = T["noAccess"]; return; }
+        var user = (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User.Identity?.Name ?? "";
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var current = await db.Customers.SingleAsync(c => c.Id == customer.Id); current.IsActive = !current.IsActive;
+        db.AuditEntries.Add(new AuditEntry { Actor = user, Action = current.IsActive ? "CustomerActivated" : "CustomerSuspended", EntityType = "Customer", EntityId = current.Id.ToString(), Details = current.Code });
+        await db.SaveChangesAsync(); await Reload();
+    }
+    private async Task<bool> CanEdit()
+    {
+        var user = (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User;
+        return user.IsInRole("Administrator") || user.IsInRole("Billing");
+    }
+    private sealed record CustomerRow(Customer Customer, string Balance, bool HasBalance);
+    private sealed record CustomerReportRow(Customer Customer, MeterReading? Reading, string DebtText, bool HasDebt);
+    private sealed class CustomerForm
+    {
+        [Required, StringLength(180, MinimumLength = 2)] public string Name { get; set; } = "";
+        [StringLength(80)] public string? MeterNumber { get; set; }
+        [Range(1900, 2100)] public int? SubscriptionYear { get; set; }
+        [StringLength(40)] public string? Phone { get; set; }
+        [StringLength(180)] public string? Location { get; set; }
+        [StringLength(2000)] public string? Notes { get; set; }
+    }
+}

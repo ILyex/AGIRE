@@ -1,0 +1,113 @@
+@page "/usage"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Administrator,Billing,ReadOnly", Policy = "AdminMfa")]
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UiText T
+
+<PageTitle>@T["usage"] — @T["brand"]</PageTitle>
+<div class="page-heading"><div><h1 class="page-title">@T["usageTitle"]</h1><p class="page-description">@T["usageHint"]</p></div><AuthorizeView Roles="Administrator,Billing"><Authorized><button class="btn-main" @onclick="OpenForm"><AppIcon Name="plus" Size="16" />@T["recordReading"]</button></Authorized></AuthorizeView></div>
+<section class="panel table-panel"><div class="table-toolbar"><div><h2 class="panel-title">@T["usageTitle"]</h2><span class="table-count">@Rows.Count</span></div><div class="table-toolbar-actions"><input class="search-box" placeholder="⌕  @T["searchCustomers"]" @bind="Query" @bind:event="oninput" /><SelectMenu TValue="string" Label="@T["allPeriods"]" Options="PeriodOptions" @bind-Value="PeriodFilter" /></div></div>
+@if (!Filtered.Any()) { <div class="empty-state"><div class="empty-icon"><AppIcon Name="meter" Size="21" /></div><b>@T["noData"]</b><span>@T["recordReading"]</span></div> }
+else
+{
+    <div class="table-scroll">
+        <table class="usage-table">
+            <thead>
+                <tr><th>@T["customer"]</th><th>@T["period"]</th><th>@T["previousReading"]</th><th>@T["currentReading"]</th><th>@T["consumption"]</th><th>@T["rate"]</th><th>@T["charge"]</th><th>@T["status"]</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Filtered)
+                {
+                    <tr>
+                        <td><b>@r.Customer.Name</b><div class="secondary-text">@r.Customer.Code</div></td>
+                        <td><bdi dir="ltr">@r.Period.ToString("yyyy-MM")</bdi></td>
+                        <td class="reading-cell">
+                            <bdi class="reading-value" dir="ltr">@r.PreviousReading.ToString("N3") m³</bdi>
+                            <small class="reading-date"><span>@T["readingDate"]</span><time dir="ltr">@r.PreviousReadOn.ToString("d", CultureInfo.CurrentCulture)</time></small>
+                        </td>
+                        <td class="reading-cell">
+                            <bdi class="reading-value" dir="ltr">@r.CurrentReading.ToString("N3") m³</bdi>
+                            <small class="reading-date"><span>@T["readingDate"]</span><time dir="ltr">@r.CurrentReadOn.ToString("d", CultureInfo.CurrentCulture)</time></small>
+                        </td>
+                        <td><bdi dir="ltr"><b>@r.Consumption.ToString("N3") m³</b></bdi></td>
+                        <td class="money"><bdi dir="ltr">@r.Rate.ToString("N4") @T["currency"]</bdi></td>
+                        <td class="money"><bdi dir="ltr">@r.Charge.ToString("N2") @T["currency"]</bdi></td>
+                        <td>@((MarkupString)ReadingStatus(r))</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+</section>
+@if (!string.IsNullOrEmpty(Toast)) { <div class="toast-host" role="status">@Toast</div> }
+@if (ModalOpen)
+{
+<div class="modal-backdrop" @onclick="Close"><section class="modal-card" role="dialog" aria-modal="true" @onclick:stopPropagation="true"><div class="modal-heading"><h2>@T["recordReading"]</h2><button type="button" class="modal-close" aria-label="@T["close"]" @onclick="Close"><AppIcon Name="close" Size="18" /></button></div>
+<EditForm Model="Form" OnValidSubmit="Save"><DataAnnotationsValidator/><ValidationSummary class="validation-errors"/><div class="form-grid">
+<div class="field full"><label>@T["customer"] *</label><SelectMenu TValue="Guid?" Label="@T["customer"]" Placeholder="—" Options="UsageCustomerOptions" @bind-Value="Form.CustomerId" @bind-Value:after="LoadPreviousReading" /></div>
+<div class="field"><label>@T["period"] *</label><DatePicker @bind-Value="Form.Period" @bind-Value:after="LoadPreviousReading" Label="@T["period"]" /></div>
+<div class="field"><label>@T["rate"] (@T["currency"]/m³)</label><div class="form-control tariff-readonly" aria-readonly="true"><b>@(TariffConfigured ? CentralTariff!.Value.ToString("N4", CultureInfo.CurrentCulture) : T["tariffNotConfigured"])</b><span>@T["currency"] / m³</span></div></div>
+<div class="field"><label>@(HasPreviousReading ? T["previousReading"] : T["initialReading"]) (m³) *</label><InputNumber class="form-control" @bind-Value="Form.Previous" @bind-Value:event="oninput" min="0" step="0.001" readonly="@HasPreviousReading" /></div>
+<div class="field"><label>@T["previousReadingDate"] *</label>@if (HasPreviousReading) { <div class="form-control reading-date-static" aria-readonly="true">@Form.PreviousReadOn.ToString("d", CultureInfo.CurrentCulture)</div> } else { <DatePicker @bind-Value="Form.PreviousReadOn" Label="@T["previousReadingDate"]" /> }</div>
+<div class="field"><label>@T["currentReading"] (m³) *</label><InputNumber class="form-control" @bind-Value="Form.Current" @bind-Value:event="oninput" min="0" step="0.001" /></div>
+<div class="field"><label>@T["currentReadingDate"] *</label><DatePicker @bind-Value="Form.CurrentReadOn" Label="@T["currentReadingDate"]" /></div>
+<div class="field full"><label>@T["notes"]</label><InputText class="form-control" @bind-Value="Form.Note" maxlength="500" /></div>
+</div>@if (!TariffConfigured) { <div class="tariff-warning"><AppIcon Name="info" Size="16" />@T["tariffRequired"]</div> }<p class="calculation-preview">@T["consumption"]: <b>@PreviewConsumption.ToString("N3") m³</b> <span>·</span> @T["charge"]: <b>@PreviewCharge.ToString("N2") @T["currency"]</b></p><div class="modal-footer"><button type="submit" class="btn-main" disabled="@(!TariffConfigured)">@T["save"]</button><button type="button" class="btn-outline" @onclick="Close">@T["cancel"]</button></div></EditForm>
+</section></div>
+}
+
+@code {
+    private List<MeterReading> Rows=[]; private List<Customer> Customers=[]; private List<string> Periods=[];
+    private IReadOnlyList<SelectOption> PeriodOptions => [new("", T["allPeriods"]), .. Periods.Select(period => new SelectOption(period, period))];
+    private IReadOnlyList<SelectOption> UsageCustomerOptions => [new("", "—"), .. Customers.Select(customer => new SelectOption(customer.Id.ToString("D"), $"{customer.Code} · {customer.Name}"))];
+    private Dictionary<Guid, (Invoice? Invoice, decimal Paid)> InvoiceByReading = [];
+    private IEnumerable<MeterReading> Filtered => Rows.Where(r => (string.IsNullOrEmpty(PeriodFilter) || r.Period.ToString("yyyy-MM")==PeriodFilter) && (string.IsNullOrWhiteSpace(Query) || $"{r.Customer.Name} {r.Customer.Code}".Contains(Query, StringComparison.CurrentCultureIgnoreCase)));
+    private bool ModalOpen, HasPreviousReading; private string Query="", PeriodFilter="", Toast=""; private ReadingForm Form=new(); private decimal? CentralTariff;
+    private bool TariffConfigured => CentralTariff is > 0;
+    private decimal NormalizedPrevious => decimal.Round(Form.Previous, 3, MidpointRounding.AwayFromZero);
+    private decimal NormalizedCurrent => decimal.Round(Form.Current, 3, MidpointRounding.AwayFromZero);
+    private decimal NormalizedRate => decimal.Round(CentralTariff ?? 0m, 4, MidpointRounding.AwayFromZero);
+    private decimal PreviewConsumption => Math.Max(0, NormalizedCurrent - NormalizedPrevious);
+    private decimal PreviewCharge => decimal.Round(PreviewConsumption * NormalizedRate, 2, MidpointRounding.AwayFromZero);
+    protected override Task OnInitializedAsync()=>Reload();
+    private async Task Reload(){await using var db=await DbFactory.CreateDbContextAsync();Rows=await db.MeterReadings.Include(x=>x.Customer).OrderByDescending(x=>x.Period).ToListAsync();Customers=await db.Customers.Where(x=>x.IsActive).OrderBy(x=>x.Name).ToListAsync();CentralTariff=await db.WaterTariffSettings.Where(x=>x.Id==1).Select(x=>x.RatePerCubicMetre).SingleOrDefaultAsync();Periods=Rows.Select(x=>x.Period.ToString("yyyy-MM")).Distinct().OrderByDescending(x=>x).ToList();var invoices=await db.Invoices.Include(x=>x.Payments).Where(x=>x.Number.StartsWith("USE-")).ToListAsync();InvoiceByReading=Rows.ToDictionary(r=>r.Id,r=>{var prefix=$"USE-{r.Period:yyyyMM}-";var invoice=invoices.FirstOrDefault(i=>i.CustomerId==r.CustomerId&&i.Number.StartsWith(prefix));return(invoice,invoice?.Payments.Sum(p=>p.Amount)??0m);});}
+    private async Task OpenForm(){if(Customers.Count==0)await Reload();await using(var db=await DbFactory.CreateDbContextAsync())CentralTariff=await db.WaterTariffSettings.Where(x=>x.Id==1).Select(x=>x.RatePerCubicMetre).SingleOrDefaultAsync();Form=new(){Period=new DateOnly(DateTime.Today.Year,DateTime.Today.Month,1),CurrentReadOn=DateOnly.FromDateTime(DateTime.Today),PreviousReadOn=DateOnly.FromDateTime(DateTime.Today)};HasPreviousReading=false;ModalOpen=true;}
+    private async Task LoadPreviousReading(){
+        await using var db=await DbFactory.CreateDbContextAsync();
+        CentralTariff=await db.WaterTariffSettings.Where(x=>x.Id==1).Select(x=>x.RatePerCubicMetre).SingleOrDefaultAsync();
+        if(Form.CustomerId is null)return;
+        var month=new DateOnly(Form.Period.Year,Form.Period.Month,1);
+        var previous=await db.MeterReadings.Where(r=>r.CustomerId==Form.CustomerId.Value&&r.Period<month).OrderByDescending(r=>r.Period).FirstOrDefaultAsync();
+        if(previous is null){HasPreviousReading=false;Form.Previous=0;Form.PreviousReadOn=month;return;}
+        HasPreviousReading=true;Form.Previous=previous.CurrentReading;Form.PreviousReadOn=previous.CurrentReadOn;
+    }
+    private void Close()=>ModalOpen=false;
+    private async Task Save(){var user=(await AuthenticationStateProvider.GetAuthenticationStateAsync()).User;if(!user.IsInRole("Administrator")&&!user.IsInRole("Billing")){Toast=T["noAccess"];return;}if(Form.CustomerId is null){Toast=T["loginError"];return;}if(!TariffConfigured){Toast=T["tariffRequired"];return;}
+        var period=new DateOnly(Form.Period.Year,Form.Period.Month,1);
+        var currentMonth=new DateOnly(DateTime.Today.Year,DateTime.Today.Month,1);
+        if(period>currentMonth||Form.CurrentReadOn.Year!=period.Year||Form.CurrentReadOn.Month!=period.Month||Form.Current<0){Toast=T["loginError"];return;}
+        await using var db=await DbFactory.CreateDbContextAsync();await using var tx=await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        var activeTariff=await db.WaterTariffSettings.Where(x=>x.Id==1).Select(x=>x.RatePerCubicMetre).SingleOrDefaultAsync();
+        if(activeTariff is null||activeTariff<=0){Toast=T["tariffRequired"];return;}
+        if(activeTariff.Value!=NormalizedRate){CentralTariff=activeTariff;Toast=T["tariffChangedReview"];return;}
+        var customer=await db.Customers.SingleOrDefaultAsync(c=>c.Id==Form.CustomerId.Value&&c.IsActive);
+        if(customer is null){Toast=T["noAccess"];return;}
+        if(await db.MeterReadings.AnyAsync(x=>x.CustomerId==customer.Id&&x.Period==period)){Toast=T["noData"];return;}
+        // A backdated reading after a later recorded month would break the meter chain.
+        if(await db.MeterReadings.AnyAsync(x=>x.CustomerId==customer.Id&&x.Period>period)){Toast=T["loginError"];return;}
+        // Never trust the previous counter value posted by the interactive client.
+        var previous=await db.MeterReadings.Where(r=>r.CustomerId==customer.Id&&r.Period<period).OrderByDescending(r=>r.Period).FirstOrDefaultAsync();
+        var previousValue=previous?.CurrentReading??NormalizedPrevious;
+        var previousDate=previous?.CurrentReadOn??Form.PreviousReadOn;
+        var rate=NormalizedRate;
+        var currentReading=NormalizedCurrent;
+        if(previousValue<0||currentReading<previousValue||Form.CurrentReadOn<previousDate||previousDate>DateOnly.FromDateTime(DateTime.Today)){Toast=T["loginError"];return;}
+        var actor=user.Identity?.Name??"";var reading=new MeterReading{CustomerId=customer.Id,Period=period,PreviousReadOn=previousDate,PreviousReading=previousValue,CurrentReadOn=Form.CurrentReadOn,CurrentReading=currentReading,Rate=rate,Note=Form.Note?.Trim(),RecordedBy=actor};db.MeterReadings.Add(reading);
+        if(reading.Charge>9999999999999999.99m){Toast=T["loginError"];return;}
+        if(reading.Charge>0){var invoice=new Invoice{Number=$"USE-{period:yyyyMM}-{Guid.NewGuid().ToString("N")[..12].ToUpperInvariant()}",CustomerId=reading.CustomerId,Description=$"{T["usage"]} {period:yyyy-MM}",Amount=reading.Charge,IssuedOn=reading.CurrentReadOn,DueOn=reading.CurrentReadOn.AddDays(30),CreatedBy=actor};db.Invoices.Add(invoice);}
+        db.AuditEntries.Add(new AuditEntry{Actor=actor,Action="MeterReadingRecorded",EntityType="MeterReading",EntityId=reading.Id.ToString(),Details=$"{period:yyyy-MM}; previous {previousValue:N3} m3 on {previousDate:yyyy-MM-dd}; current {reading.CurrentReading:N3} m3 on {reading.CurrentReadOn:yyyy-MM-dd}; rate {rate:N4} DZD; charge {reading.Charge:N2} DZD"});await db.SaveChangesAsync();await tx.CommitAsync();ModalOpen=false;Toast=T["recordReading"];await Reload();}
+    private MarkupString ReadingStatus(MeterReading reading){if(!InvoiceByReading.TryGetValue(reading.Id,out var item)||item.Invoice is null)return new($"<span class=\"status-pill due\">● {(reading.Charge==0?T["noInvoice"]:T["open"])}</span>");return new(item.Invoice.Amount<=item.Paid?$"<span class=\"status-pill\">● {T["paid"]}</span>":item.Paid>0?$"<span class=\"status-pill partial\">● {T["partial"]}</span>":$"<span class=\"status-pill due\">● {T["open"]}</span>");}
+    private sealed class ReadingForm{[Required]public Guid? CustomerId{get;set;}[Required]public DateOnly Period{get;set;}[Range(typeof(decimal),"0","999999999999")]public decimal Previous{get;set;}[Required]public DateOnly PreviousReadOn{get;set;}[Range(typeof(decimal),"0","999999999999")]public decimal Current{get;set;}[Required]public DateOnly CurrentReadOn{get;set;}[StringLength(500)]public string? Note{get;set;}}
+}

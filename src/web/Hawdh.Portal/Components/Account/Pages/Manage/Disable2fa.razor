@@ -1,0 +1,76 @@
+@page "/Account/Manage/Disable2fa"
+@attribute [Authorize(Policy = "AdminMfa")]
+
+@using Microsoft.AspNetCore.Identity
+@using Hawdh.Portal.Data
+@inject UiText T
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IdentityRedirectManager RedirectManager
+@inject ILogger<Disable2fa> Logger
+
+<PageTitle>@T["disableTwoFactor"] — @T["brand"]</PageTitle>
+
+<div class="account-security-page">
+    <StatusMessage />
+    <header class="account-security-heading">
+        <span class="account-security-icon is-warning"><AppIcon Name="warning" Size="19" /></span>
+        <div><h2>@T["disableTwoFactor"]</h2><p>@T["authenticatorDisableWarning"]</p></div>
+    </header>
+    <div class="account-security-notice is-critical" role="alert">
+        <AppIcon Name="info" Size="17" />
+        <div><b>@T["authenticatorDisableWarning"]</b><p>@T["twoFactorCodesHint"]</p></div>
+    </div>
+    <form class="account-security-actions" @formname="disable-2fa" @onsubmit="OnSubmitAsync" method="post">
+        <AntiforgeryToken />
+        <button class="btn-danger-outline" type="submit"><AppIcon Name="close" Size="15" />@T["confirmDisableTwoFactor"]</button>
+        <a href="/Account/Manage/TwoFactorAuthentication" class="btn-outline">@T["cancel"]</a>
+    </form>
+</div>
+
+@code {
+    private ApplicationUser? user;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        user = await UserManager.GetUserAsync(HttpContext.User);
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        if (HttpMethods.IsGet(HttpContext.Request.Method) && !await UserManager.GetTwoFactorEnabledAsync(user))
+            RedirectManager.RedirectToWithStatus("/Account/Manage/TwoFactorAuthentication", T["twoFactorDisabled"], HttpContext);
+    }
+
+    private async Task OnSubmitAsync()
+    {
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        if (!await UserManager.GetTwoFactorEnabledAsync(user))
+        {
+            RedirectManager.RedirectToWithStatus("/Account/Manage/TwoFactorAuthentication", T["twoFactorDisabled"], HttpContext);
+            return;
+        }
+
+        var result = await UserManager.SetTwoFactorEnabledAsync(user, false);
+        if (!result.Succeeded)
+        {
+            Logger.LogError("Could not disable two-factor authentication for user {UserId}: {Errors}.", user.Id, string.Join(",", result.Errors.Select(error => error.Code)));
+            RedirectManager.RedirectToWithStatus("/Account/Manage/TwoFactorAuthentication", T["operationFailed"], HttpContext);
+            return;
+        }
+
+        await SignInManager.RefreshSignInAsync(user);
+        Logger.LogInformation("User with ID '{UserId}' has disabled 2FA.", user.Id);
+        RedirectManager.RedirectToWithStatus("/Account/Manage/TwoFactorAuthentication", T["twoFactorDisabled"], HttpContext);
+    }
+}

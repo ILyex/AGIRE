@@ -1,0 +1,75 @@
+@page "/Account/ResendEmailConfirmation"
+@attribute [AllowAnonymous]
+
+@using System.ComponentModel.DataAnnotations
+@using System.Text
+@using Microsoft.AspNetCore.WebUtilities
+@using Hawdh.Portal.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject IEmailSender<ApplicationUser> EmailSender
+@inject NavigationManager NavigationManager
+@inject UiText T
+@inject ILogger<ResendEmailConfirmation> Logger
+
+<PageTitle>@T["resendConfirmationTitle"] — @T["brand"]</PageTitle>
+<div class="auth-screen auth-screen-standalone"><main class="auth-card">
+    <div class="auth-heading-icon"><AppIcon Name="mail" Size="20" /></div>
+    <h1 class="auth-title">@T["resendConfirmationTitle"]</h1>
+    <p class="auth-subtitle">@T["resendConfirmationHint"]</p>
+    @if (message is not null) { <div class="alert-success" role="status">@message</div> }
+    <EditForm Model="Input" FormName="resend-email-confirmation" OnValidSubmit="OnValidSubmitAsync" method="post">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" role="alert" />
+        <div class="mb-3"><label class="form-label" for="confirm-email">@T["email"]</label><div class="auth-input-wrap"><AppIcon Name="mail" Size="17" /><InputText @bind-Value="Input.Email" id="confirm-email" class="form-control" autocomplete="email" inputmode="email" /></div><ValidationMessage For="() => Input.Email" class="text-danger" /></div>
+        <button type="submit" class="btn btn-primary w-100 auth-submit">@T["resendConfirmationAction"]</button>
+    </EditForm>
+    <a class="auth-link" href="/Account/Login">@T["backToLogin"]</a>
+</main></div>
+
+@code {
+    private string? message;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        Input ??= new();
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        var user = await UserManager.FindByEmailAsync(Input.Email!);
+        if (user is null || !user.IsActive || await UserManager.IsEmailConfirmedAsync(user))
+        {
+            message = T["confirmationEmailSentIfAvailable"];
+            return;
+        }
+
+        var userId = await UserManager.GetUserIdAsync(user);
+        var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
+        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+        var callbackUrl = NavigationManager.GetUriWithQueryParameters(
+            NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
+            new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code });
+        try
+        {
+            await EmailSender.SendConfirmationLinkAsync(user, Input.Email, callbackUrl);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Email confirmation message could not be delivered.");
+        }
+
+        message = T["confirmationEmailSentIfAvailable"];
+    }
+
+    private sealed class InputModel
+    {
+        [LocalizedRequired]
+        [LocalizedEmailAddress]
+        public string Email { get; set; } = "";
+    }
+}
+

@@ -1,0 +1,113 @@
+@using System.Linq.Expressions
+@using Microsoft.AspNetCore.Components.Forms
+
+<div class="date-picker @(Open ? "is-open" : "")" @onkeydown="HandleKeyDown">
+    <button type="button" class="form-control date-picker-trigger" aria-haspopup="dialog" aria-expanded="@Open" aria-label="@AccessibleLabel" @onclick="Toggle">
+        <span>@Value.ToString("d", CultureInfo.CurrentCulture)</span>
+        <svg class="date-picker-trigger-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M7.5 3v4M16.5 3v4M3.5 9.5h17"/></svg>
+    </button>
+    @if (Open)
+    {
+        <div class="date-picker-scrim" @onclick="Close"></div>
+        <section class="date-picker-popover" role="dialog" aria-label="@AccessibleLabel" @onclick:stopPropagation="true">
+            <header class="date-picker-header">
+                <button type="button" class="date-picker-month" @onclick="() => ShowMonth = !ShowMonth" aria-expanded="@ShowMonth">@VisibleMonth.ToString("MMMM yyyy", CultureInfo.CurrentCulture)<span class="date-picker-caret">⌄</span></button>
+                <div class="date-picker-navigation">
+                    <button type="button" aria-label="@PreviousLabel" @onclick="PreviousMonth"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+                    <button type="button" aria-label="@NextLabel" @onclick="NextMonth"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+                </div>
+            </header>
+            @if (ShowMonth)
+            {
+                <div class="date-picker-month-grid" aria-label="@MonthPickerLabel">
+                    @for (var month = 1; month <= 12; month++)
+                    {
+                        var monthNumber = month;
+                        <button type="button" class="@(monthNumber == VisibleMonth.Month ? "selected" : "")" @onclick="() => ChooseMonth(monthNumber)">@(new DateOnly(VisibleMonth.Year, monthNumber, 1).ToString("MMM", CultureInfo.CurrentCulture))</button>
+                    }
+                    <div class="date-picker-year-control"><button type="button" aria-label="@PreviousYearLabel" @onclick="() => ShiftYear(-1)">−</button><b>@VisibleMonth.Year</b><button type="button" aria-label="@NextYearLabel" @onclick="() => ShiftYear(1)">+</button></div>
+                </div>
+            }
+            else
+            {
+                <div class="date-picker-weekdays" aria-hidden="true">
+                    @foreach (var dayName in WeekdayNames) { <span>@dayName</span> }
+                </div>
+                <div class="date-picker-days" role="grid">
+                    @foreach (var day in CalendarDays)
+                    {
+                        var date = day;
+                        <button type="button" role="gridcell" class="date-picker-day @(date.Month == VisibleMonth.Month ? "in-month" : "outside-month") @(date == Value ? "selected" : "") @(date == Today ? "today" : "")" aria-pressed="@(date == Value)" @onclick="() => SelectDate(date)">@date.Day</button>
+                    }
+                </div>
+            }
+            <footer class="date-picker-footer"><span>@Value.ToString("D", CultureInfo.CurrentCulture)</span><button type="button" @onclick="SelectToday">@TodayLabel</button></footer>
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter] public DateOnly Value { get; set; }
+    [Parameter] public EventCallback<DateOnly> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<DateOnly>>? ValueExpression { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+
+    private bool Open, ShowMonth;
+    private DateOnly VisibleMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+    private string Language => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+    private string AccessibleLabel => Label ?? (IsArabic ? "اختر التاريخ" : "Choisir une date");
+    private string PreviousLabel => IsArabic ? "الشهر السابق" : "Mois précédent";
+    private string NextLabel => IsArabic ? "الشهر التالي" : "Mois suivant";
+    private string PreviousYearLabel => IsArabic ? "السنة السابقة" : "Année précédente";
+    private string NextYearLabel => IsArabic ? "السنة التالية" : "Année suivante";
+    private string MonthPickerLabel => IsArabic ? "اختيار الشهر والسنة" : "Choisir le mois et l’année";
+    private string TodayLabel => IsArabic ? "اليوم" : "Aujourd’hui";
+    private bool IsArabic => Language.Equals("ar", StringComparison.OrdinalIgnoreCase);
+    private DayOfWeek FirstDay => IsArabic ? DayOfWeek.Sunday : DayOfWeek.Monday;
+    private IEnumerable<string> WeekdayNames => Enumerable.Range(0, 7).Select(offset => CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedDayName((DayOfWeek)(((int)FirstDay + offset) % 7)));
+    private IEnumerable<DateOnly> CalendarDays
+    {
+        get
+        {
+            var first = new DateOnly(VisibleMonth.Year, VisibleMonth.Month, 1);
+            var offset = (7 + (int)first.DayOfWeek - (int)FirstDay) % 7;
+            var start = first.AddDays(-offset);
+            return Enumerable.Range(0, 42).Select(start.AddDays);
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!Open) VisibleMonth = new DateOnly(Value.Year, Value.Month, 1);
+    }
+
+    private void Toggle()
+    {
+        Open = !Open;
+        ShowMonth = false;
+        if (Open) VisibleMonth = new DateOnly(Value.Year, Value.Month, 1);
+    }
+
+    private void Close() => Open = false;
+    private void HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape") Close();
+    }
+    private void PreviousMonth() => VisibleMonth = VisibleMonth.AddMonths(-1);
+    private void NextMonth() => VisibleMonth = VisibleMonth.AddMonths(1);
+    private void ShiftYear(int amount) => VisibleMonth = VisibleMonth.AddYears(amount);
+    private void ChooseMonth(int month) { VisibleMonth = new DateOnly(VisibleMonth.Year, month, 1); ShowMonth = false; }
+    private Task SelectToday() => SelectDate(Today);
+
+    private async Task SelectDate(DateOnly date)
+    {
+        Value = date;
+        await ValueChanged.InvokeAsync(date);
+        if (ValueExpression is not null && EditContext is not null)
+            EditContext.NotifyFieldChanged(FieldIdentifier.Create(ValueExpression));
+        VisibleMonth = new DateOnly(date.Year, date.Month, 1);
+        Open = false;
+    }
+}

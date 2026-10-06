@@ -1,0 +1,50 @@
+@page "/Account/Manage/PersonalData"
+@attribute [Authorize(Policy = "AdminMfa")]
+
+@using Microsoft.AspNetCore.Identity
+@using Hawdh.Portal.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject IdentityRedirectManager RedirectManager
+@inject UiText T
+
+<PageTitle>@T["personalData"] — @T["brand"]</PageTitle>
+
+<StatusMessage />
+<section class="account-form-page personal-data-page">
+    <header class="account-form-heading">
+        <span class="account-form-icon"><AppIcon Name="reports" Size="18" /></span>
+        <div><h2>@T["personalData"]</h2><p>@T["personalDataHint"]</p></div>
+    </header>
+    <div class="personal-data-card">
+        <div class="personal-data-copy">
+            <h3>@T["yourPersonalData"]</h3>
+            <p>@T["personalDataDescription"]</p>
+        </div>
+        <div class="personal-data-actions">
+            <form action="Account/Manage/DownloadPersonalData" method="post">
+            <AntiforgeryToken />
+                <button class="btn-main" type="submit"><AppIcon Name="download" Size="16" />@T["downloadPersonalData"]</button>
+            </form>
+            <a href="Account/Manage/DeletePersonalData" class="btn-danger-outline"><AppIcon Name="trash" Size="16" />@T["deleteAccount"]</a>
+        </div>
+    </div>
+    <aside class="account-security-notice is-critical">
+        <AppIcon Name="shield" Size="17" />
+        <div><b>@T["permanentActionWarningTitle"]</b><p>@T["deleteAccountWarning"]</p></div>
+    </aside>
+</section>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user  = await UserManager.GetUserAsync(HttpContext.User);
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+        }
+    }
+}

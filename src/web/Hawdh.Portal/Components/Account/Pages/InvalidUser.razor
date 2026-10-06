@@ -1,0 +1,15 @@
+@page "/Account/InvalidUser"
+@attribute [AllowAnonymous]
+
+@inject UiText T
+
+<PageTitle>@T["invalidUserTitle"] — @T["brand"]</PageTitle>
+<div class="auth-screen auth-screen-standalone">
+    <main class="auth-card" role="alert">
+        <div class="auth-heading-icon"><AppIcon Name="warning" Size="20" /></div>
+        <h1 class="auth-title">@T["invalidUserTitle"]</h1>
+        <p class="auth-subtitle">@T["invalidUserHint"]</p>
+        <a class="btn-main w-100 auth-submit" href="/Account/Login">@T["backToLoginAction"]</a>
+    </main>
+</div>
+

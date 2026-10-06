@@ -1,0 +1,196 @@
+@page "/"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Administrator,Billing,ReadOnly", Policy = "AdminMfa")]
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject UiText T
+
+<PageTitle>@T["dashboard"] — @T["brand"]</PageTitle>
+<div class="page-heading">
+    <div><h1 class="page-title">@T["overview"]</h1><p class="page-description">@T["overviewHint"]</p></div>
+    <AuthorizeView Roles="Administrator,Billing"><Authorized><div class="heading-actions"><a class="btn-outline" href="/customers"><AppIcon Name="customers" Size="16" />@T["newCustomer"]</a><a class="btn-main" href="/invoices/new"><AppIcon Name="plus" Size="16" />@T["newInvoice"]</a></div></Authorized></AuthorizeView>
+</div>
+
+<section class="kpi-grid" aria-label="@T["overview"]">
+    <article class="kpi-card"><div class="kpi-top">@T["customersTotal"] <span class="kpi-icon"><AppIcon Name="customers" Size="20" /></span></div><div class="kpi-value">@ActiveCustomers.ToString("N0")</div><div class="kpi-foot">@T["activeCustomers"]</div></article>
+    <article class="kpi-card amber"><div class="kpi-top">@T["outstanding"] <span class="kpi-icon"><AppIcon Name="debt" Size="20" /></span></div><div class="kpi-value">@MoneySummary(DueByCurrency)</div><div class="kpi-foot">@OverdueCount.ToString("N0") @T["overdue"]</div></article>
+    <article class="kpi-card"><div class="kpi-top">@T["collected"] <span class="kpi-icon"><AppIcon Name="paid" Size="20" /></span></div><div class="kpi-value">@MoneySummary(CollectedByCurrency)</div><div class="kpi-foot">@InvoiceCount.ToString("N0") @T["invoices"]</div></article>
+    <article class="kpi-card blue"><div class="kpi-top">@T["usageMonth"] <span class="kpi-icon"><AppIcon Name="water" Size="20" /></span></div><div class="kpi-value">@Usage.ToString("N0") <span style="font-size:13px">@T["unitM3"]</span></div><div class="kpi-foot">@MonthLabel</div></article>
+</section>
+
+<section class="panel insight-carousel" aria-roledescription="carousel" aria-label="@T["dashboardInsights"]">
+    <div class="insight-head">
+        <div><span class="insight-eyebrow"><i></i>@T["liveOverview"]</span><h2 class="panel-title">@T["dashboardInsights"]</h2><p class="panel-subtitle">@T["insightsHint"]</p></div>
+        <div class="insight-controls">
+            @if (ActiveSlide == 0)
+            {
+                <div class="range-switch" role="group" aria-label="@T["chartRange"]">
+                    <button type="button" class="@(ChartRange == 6 ? "selected" : "")" @onclick="() => SetRange(6)">6M</button>
+                    <button type="button" class="@(ChartRange == 12 ? "selected" : "")" @onclick="() => SetRange(12)">12M</button>
+                </div>
+            }
+            <button class="carousel-arrow" type="button" @onclick="PreviousSlide" aria-label="@T["previousSlide"]"><AppIcon Name="arrow" Size="16" /></button>
+            <button class="carousel-arrow next" type="button" @onclick="NextSlide" aria-label="@T["nextSlide"]"><AppIcon Name="arrow" Size="16" /></button>
+        </div>
+    </div>
+    <div class="insight-stage" aria-live="polite" aria-atomic="true">
+        <article class="insight-slide @(ActiveSlide == 0 ? "active" : "")" aria-hidden="@(ActiveSlide != 0)">
+            <div class="insight-slide-heading"><div><span class="slide-index">01 / 03</span><h3>@T["trend"]</h3><p>@ChartMonthsLabel · @DashboardCurrency</p></div><div class="chart-legend"><span><i class="legend-dot" style="background:var(--chart-invoice)"></i>@T["invoicesIssued"]</span><span><i class="legend-dot" style="background:var(--chart-paid)"></i>@T["paymentsReceived"]</span></div></div>
+            <div class="advanced-chart financial-chart"><svg viewBox="0 0 720 220" role="img" aria-label="@T["trend"]" preserveAspectRatio="none">
+                @if (ChartMax > 0)
+                {
+                    <defs><linearGradient id="collection-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--chart-paid)" stop-opacity=".2"/><stop offset="1" stop-color="var(--chart-paid)" stop-opacity="0"/></linearGradient></defs>
+                    @for (var line = 0; line < 4; line++) { var y = 25 + line * 44; <line class="chart-gridline" x1="48" x2="698" y1="@y" y2="@y" />@SvgText("axis-label", 42, y + 4, "end", FormatChartValue(ChartMax * (3 - line) / 3, ChartMax)) }
+                    <path d="@AreaPath(VisibleMonths.Select(m => m.Collected), ChartMax)" class="collection-area" />
+                    <polyline points="@ChartPoints(VisibleMonths.Select(m => m.Invoiced), ChartMax)" class="invoice-line" />
+                    <polyline points="@ChartPoints(VisibleMonths.Select(m => m.Collected), ChartMax)" class="collection-line" />
+                    @for (var i = 0; i < VisibleMonths.Count; i++) { var item = VisibleMonths[i]; var x = ChartX(i, VisibleMonths.Count); var invoicedY = ChartY(item.Invoiced, ChartMax); var collectedY = ChartY(item.Collected, ChartMax); <circle class="invoice-point" cx="@x" cy="@invoicedY" r="3.5"><title>@item.Label · @T["invoicesIssued"]: @Money(item.Invoiced, DashboardCurrency)</title></circle><circle class="collection-point" cx="@x" cy="@collectedY" r="4"><title>@item.Label · @T["paymentsReceived"]: @Money(item.Collected, DashboardCurrency)</title></circle> }
+                }
+                else
+                {
+                    @SvgText("chart-empty-label", 373, 112, "middle", T["noChartData"])
+                }
+                @for (var i = 0; i < VisibleMonths.Count; i++) { var item = VisibleMonths[i]; @SvgText(i % 2 == 1 ? "month-axis-label compact-month-label" : "month-axis-label", ChartX(i, VisibleMonths.Count), 207, "middle", item.Label) }
+            </svg></div>
+            <div class="chart-summary"><div><span>@T["paymentsReceived"]</span><b>@Money(VisibleMonths.Sum(m => m.Collected), DashboardCurrency)</b></div><div><span>@T["outstanding"]</span><b>@MoneySummary(DueByCurrency)</b></div><div><span>@T["paidInvoiceRate"]</span><b>@PaidInvoiceRate.ToString("0")%</b></div></div>
+        </article>
+        <article class="insight-slide @(ActiveSlide == 1 ? "active" : "")" aria-hidden="@(ActiveSlide != 1)">
+            <div class="insight-slide-heading"><div><span class="slide-index">02 / 03</span><h3>@T["usageTrend"]</h3><p>@T["last12"] · @T["unitM3"]</p></div><div class="usage-highlight"><AppIcon Name="water" Size="18" /><span>@T["usageMonth"]</span><b>@Usage.ToString("N0") @T["unitM3"]</b></div></div>
+            <div class="advanced-chart usage-chart"><svg viewBox="0 0 720 220" role="img" aria-label="@T["usageTrend"]" preserveAspectRatio="none">
+                @if (UsageChartMax > 0)
+                {
+                    <defs><linearGradient id="usage-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--chart-water)" stop-opacity=".24"/><stop offset="1" stop-color="var(--chart-water)" stop-opacity="0"/></linearGradient></defs>
+                    @for (var line = 0; line < 4; line++) { var y = 25 + line * 44; <line class="chart-gridline" x1="48" x2="698" y1="@y" y2="@y" />@SvgText("axis-label", 42, y + 4, "end", FormatChartValue(UsageChartMax * (3 - line) / 3, UsageChartMax)) }
+                    <path d="@AreaPath(VisibleUsageMonths.Select(m => m.Consumption), UsageChartMax)" class="usage-area" />
+                    <polyline points="@ChartPoints(VisibleUsageMonths.Select(m => m.Consumption), UsageChartMax)" class="usage-line" />
+                    @for (var i = 0; i < VisibleUsageMonths.Count; i++) { var item = VisibleUsageMonths[i]; var x = ChartX(i, VisibleUsageMonths.Count); var y = ChartY(item.Consumption, UsageChartMax); <circle class="usage-point" cx="@x" cy="@y" r="4"><title>@item.Label · @item.Consumption.ToString("N0") @T["unitM3"]</title></circle> }
+                }
+                else
+                {
+                    @SvgText("chart-empty-label", 373, 112, "middle", T["noChartData"])
+                }
+                @for (var i = 0; i < VisibleUsageMonths.Count; i++) { var item = VisibleUsageMonths[i]; @SvgText(i % 2 == 1 ? "month-axis-label compact-month-label" : "month-axis-label", ChartX(i, VisibleUsageMonths.Count), 207, "middle", item.Label) }
+            </svg></div>
+            <div class="chart-summary"><div><span>@T["usageMonth"]</span><b>@Usage.ToString("N0") @T["unitM3"]</b></div><div><span>@T["averageMonthlyUsage"]</span><b>@AverageUsage.ToString("N0") @T["unitM3"]</b></div><div><span>@T["customersTotal"]</span><b>@ActiveCustomers.ToString("N0")</b></div></div>
+        </article>
+        <article class="insight-slide status-slide @(ActiveSlide == 2 ? "active" : "")" aria-hidden="@(ActiveSlide != 2)">
+            <div class="insight-slide-heading"><div><span class="slide-index">03 / 03</span><h3>@T["financialHealth"]</h3><p>@T["financialHint"]</p></div><div class="status-total"><b>@InvoiceCount.ToString("N0")</b><span>@T["invoices"]</span></div></div>
+            <div class="status-chart-layout"><div class="donut" style="background:@DonutStyle"><div class="donut-center"><b>@PaidInvoiceRate.ToString("0")%</b><small>@T["paidInvoiceRate"]</small></div></div><div class="status-breakdown">
+                <div class="status-breakdown-row"><span><i class="legend-dot" style="background:var(--chart-paid)"></i>@T["paid"]</span><b>@PaidCount.ToString("N0")</b><small>@Percent(PaidCount)</small></div>
+                <div class="status-breakdown-row"><span><i class="legend-dot" style="background:var(--chart-partial)"></i>@T["partial"]</span><b>@PartialCount.ToString("N0")</b><small>@Percent(PartialCount)</small></div>
+                <div class="status-breakdown-row"><span><i class="legend-dot" style="background:var(--chart-open)"></i>@T["open"]</span><b>@OpenCount.ToString("N0")</b><small>@Percent(OpenCount)</small></div>
+                <div class="status-breakdown-row overdue-row"><span>@T["overdue"]</span><b>@OverdueCount.ToString("N0")</b><small>@T["invoices"]</small></div>
+            </div></div>
+        </article>
+    </div>
+    <div class="carousel-footer"><div class="carousel-dots" role="group" aria-label="@T["dashboardInsights"]">@for (var i = 0; i < 3; i++) { var slide = i; <button type="button" class="carousel-dot @(ActiveSlide == slide ? "active" : "")" @onclick="() => GoToSlide(slide)" aria-label="@T["showSlide"] @(slide + 1)" aria-current="@(ActiveSlide == slide ? "true" : null)"></button> }</div><span class="carousel-count">@((ActiveSlide + 1).ToString("00")) <i>/</i> 03</span></div>
+</section>
+
+<article class="panel table-panel">
+    <div class="table-toolbar"><div><h2 class="panel-title">@T["recent"]</h2><p class="panel-subtitle">@T["invoiceHint"]</p></div><a class="btn-quiet" href="/invoices">@T["viewAll"] <AppIcon Name="arrow" Class="direction-aware-arrow" Size="15" /></a></div>
+    @if (Recent.Count == 0)
+    {
+        <div class="empty-state"><div class="empty-icon"><AppIcon Name="invoices" Size="21" /></div><b>@T["noInvoices"]</b><span>@T["noInvoicesHint"]</span></div>
+    }
+    else
+    {
+        <div class="table-scroll"><table><thead><tr><th>@T["invoiceNo"]</th><th>@T["customer"]</th><th>@T["issueDate"]</th><th>@T["amount"]</th><th>@T["paidAmount"]</th><th>@T["remaining"]</th><th>@T["status"]</th></tr></thead><tbody>
+            @foreach (var row in Recent)
+            {
+                var balance = Math.Max(0, row.Invoice.Amount - row.Paid);
+                <tr><td><b>@row.Invoice.Number</b></td><td><div class="person-cell"><span class="person-avatar">@(string.IsNullOrWhiteSpace(row.Invoice.Customer.Name) ? "?" : row.Invoice.Customer.Name[..1])</span><span class="person-name">@row.Invoice.Customer.Name</span></div></td><td>@row.Invoice.IssuedOn.ToString("d", CultureInfo.CurrentCulture)</td><td class="money">@Money(row.Invoice.Amount, row.Invoice.CurrencyCode)</td><td class="money">@Money(row.Paid, row.Invoice.CurrencyCode)</td><td class="money">@Money(balance, row.Invoice.CurrencyCode)</td><td>@Status(row.Invoice, row.Paid)</td></tr>
+            }
+        </tbody></table></div>
+    }
+</article>
+
+@code {
+    private int ActiveCustomers, InvoiceCount, PaidCount, PartialCount, OpenCount, OverdueCount;
+    private int ActiveSlide, ChartRange = 6;
+    private decimal Usage;
+    private Dictionary<string, decimal> DueByCurrency = new(StringComparer.OrdinalIgnoreCase), CollectedByCurrency = new(StringComparer.OrdinalIgnoreCase);
+    private string DashboardCurrency = "DZD";
+    private List<InvoiceRow> Recent = [];
+    private List<MonthRow> Months = [];
+    private IReadOnlyList<MonthRow> VisibleMonths => Months.TakeLast(ChartRange).ToArray();
+    private IReadOnlyList<MonthRow> VisibleUsageMonths => Months.TakeLast(12).ToArray();
+    private decimal ChartMax => VisibleMonths.SelectMany(m => new[] { m.Invoiced, m.Collected }).DefaultIfEmpty(0).Max();
+    private decimal UsageChartMax => VisibleUsageMonths.Select(m => m.Consumption).DefaultIfEmpty(0).Max();
+    private string MonthLabel => CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(DateTime.Today.Month);
+    private string ChartMonthsLabel => T[ChartRange == 6 ? "last6" : "last12"];
+    private decimal PaidInvoiceRate => InvoiceCount == 0 ? 0 : PaidCount * 100m / InvoiceCount;
+    private decimal AverageUsage => VisibleUsageMonths.Count == 0 ? 0 : VisibleUsageMonths.Average(m => m.Consumption);
+    private string Currency(string code) => code == "DZD" ? T["currency"] : code;
+    private string Money(decimal amount, string code) => $"{amount:N2} {Currency(code)}";
+    private string MoneySummary(Dictionary<string, decimal> amounts) => amounts.Count == 0 ? Money(0, "DZD") : string.Join(" · ", amounts.OrderBy(x => x.Key == "DZD" ? 0 : 1).ThenBy(x => x.Key).Select(x => Money(x.Value, x.Key)));
+    private string DonutStyle
+    {
+        get
+        {
+            var total = Math.Max(1, InvoiceCount);
+            var paid = PaidCount * 100d / total;
+            var partial = (PaidCount + PartialCount) * 100d / total;
+            return $"conic-gradient(var(--chart-paid) 0 {paid.ToString("0.##", CultureInfo.InvariantCulture)}%,var(--chart-partial) {paid.ToString("0.##", CultureInfo.InvariantCulture)}% {partial.ToString("0.##", CultureInfo.InvariantCulture)}%,var(--chart-open) {partial.ToString("0.##", CultureInfo.InvariantCulture)}% 100%)";
+        }
+    }
+    private void PreviousSlide() => ActiveSlide = (ActiveSlide + 2) % 3;
+    private void NextSlide() => ActiveSlide = (ActiveSlide + 1) % 3;
+    private void GoToSlide(int index) => ActiveSlide = Math.Clamp(index, 0, 2);
+    private void SetRange(int months) => ChartRange = months == 12 ? 12 : 6;
+    private string Percent(int count) => InvoiceCount == 0 ? "0%" : $"{count * 100m / InvoiceCount:0}%";
+    private static double ChartX(int index, int count) => count <= 1 ? 373 : 58 + index * (640d / (count - 1));
+    private static double ChartY(decimal value, decimal max)
+    {
+        var scale = max <= 0 ? 0 : (double)(value / max);
+        return 157 - scale * 120;
+    }
+    private static string ChartPoints(IEnumerable<decimal> values, decimal max)
+    {
+        var points = values.ToArray();
+        return string.Join(" ", points.Select((value, index) => $"{ChartX(index, points.Length).ToString("0.0", CultureInfo.InvariantCulture)},{ChartY(value, max).ToString("0.0", CultureInfo.InvariantCulture)}"));
+    }
+    private static string AreaPath(IEnumerable<decimal> values, decimal max)
+    {
+        var points = values.ToArray();
+        if (points.Length == 0) return "";
+        var coordinates = points.Select((value, index) => $"{ChartX(index, points.Length).ToString("0.0", CultureInfo.InvariantCulture)},{ChartY(value, max).ToString("0.0", CultureInfo.InvariantCulture)}");
+        return $"M {ChartX(0, points.Length).ToString("0.0", CultureInfo.InvariantCulture)},157 L {string.Join(" L ", coordinates)} L {ChartX(points.Length - 1, points.Length).ToString("0.0", CultureInfo.InvariantCulture)},157 Z";
+    }
+    private static string FormatChartValue(decimal value, decimal max)
+    {
+        var interval = max / 3m;
+        var decimals = interval <= 0 ? 0 : Math.Clamp((int)Math.Ceiling(-Math.Log10((double)interval)), 0, 6);
+        return value.ToString(decimals == 0 ? "N0" : $"N{decimals}", CultureInfo.CurrentCulture);
+    }
+    private static MarkupString SvgText(string cssClass, double x, double y, string anchor, string value) => new($"<text class=\"{cssClass}\" x=\"{x.ToString("0.0", CultureInfo.InvariantCulture)}\" y=\"{y.ToString("0.0", CultureInfo.InvariantCulture)}\" text-anchor=\"{anchor}\">{System.Net.WebUtility.HtmlEncode(value)}</text>");
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        ActiveCustomers = await db.Customers.CountAsync(c => c.IsActive);
+        var invoices = await db.Invoices.Include(x => x.Customer).Include(x => x.Payments).OrderByDescending(x => x.IssuedOn).ToListAsync();
+        InvoiceCount = invoices.Count;
+        CollectedByCurrency = invoices.GroupBy(i => i.CurrencyCode).ToDictionary(g => g.Key, g => g.Sum(i => i.Payments.Sum(p => p.Amount)), StringComparer.OrdinalIgnoreCase);
+        DueByCurrency = invoices.GroupBy(i => i.CurrencyCode).ToDictionary(g => g.Key, g => g.Sum(i => Math.Max(0, i.Amount - i.Payments.Sum(p => p.Amount))), StringComparer.OrdinalIgnoreCase);
+        DashboardCurrency = invoices.Any(i => i.CurrencyCode == "DZD") ? "DZD" : invoices.Select(i => i.CurrencyCode).FirstOrDefault() ?? "DZD";
+        PaidCount = invoices.Count(i => i.Amount > 0 && i.Payments.Sum(p => p.Amount) >= i.Amount);
+        PartialCount = invoices.Count(i => i.Payments.Sum(p => p.Amount) > 0 && i.Payments.Sum(p => p.Amount) < i.Amount);
+        OpenCount = InvoiceCount - PaidCount - PartialCount;
+        OverdueCount = invoices.Count(i => i.DueOn < DateOnly.FromDateTime(DateTime.Today) && i.Payments.Sum(p => p.Amount) < i.Amount);
+        var month = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var firstChartMonth = month.AddMonths(-11);
+        var readings = await db.MeterReadings.Where(x => x.Period >= firstChartMonth && x.Period < month.AddMonths(1)).Select(x => new { x.Period, Consumption = x.CurrentReading - x.PreviousReading }).ToListAsync();
+        Usage = readings.Where(x => x.Period.Year == month.Year && x.Period.Month == month.Month).Sum(x => x.Consumption);
+        Recent = invoices.Take(6).Select(i => new InvoiceRow(i, i.Payments.Sum(p => p.Amount))).ToList();
+        for (var offset = 11; offset >= 0; offset--)
+        {
+            var m = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-offset);
+            var monthInvoices = invoices.Where(i => i.CurrencyCode == DashboardCurrency && i.IssuedOn.Year == m.Year && i.IssuedOn.Month == m.Month).ToArray();
+            var invoiceSum = monthInvoices.Sum(i => i.Amount);
+            var collectionSum = invoices.Where(i => i.CurrencyCode == DashboardCurrency).SelectMany(i => i.Payments).Where(p => p.PaidOn.Year == m.Year && p.PaidOn.Month == m.Month).Sum(p => p.Amount);
+            var usageSum = readings.Where(x => x.Period.Year == m.Year && x.Period.Month == m.Month).Sum(x => x.Consumption);
+            Months.Add(new MonthRow(m.ToString("MMM", CultureInfo.CurrentCulture), invoiceSum, collectionSum, usageSum));
+        }
+    }
+    private MarkupString Status(Invoice invoice, decimal paid) => new(invoice.Amount > 0 && paid >= invoice.Amount ? $"<span class=\"status-pill\">● {T["paid"]}</span>" : paid > 0 ? $"<span class=\"status-pill partial\">● {T["partial"]}</span>" : invoice.DueOn < DateOnly.FromDateTime(DateTime.Today) ? $"<span class=\"status-pill overdue\">● {T["overdue"]}</span>" : $"<span class=\"status-pill due\">● {T["open"]}</span>");
+    private sealed record InvoiceRow(Invoice Invoice, decimal Paid);
+    private sealed record MonthRow(string Label, decimal Invoiced, decimal Collected, decimal Consumption);
+}

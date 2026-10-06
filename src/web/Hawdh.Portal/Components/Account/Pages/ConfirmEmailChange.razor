@@ -1,0 +1,97 @@
+@page "/Account/ConfirmEmailChange"
+@attribute [AllowAnonymous]
+
+@using System.Text
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+@using Hawdh.Portal.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject ApplicationDbContext Db
+@inject UiText T
+
+<PageTitle>@T["emailChangeConfirmTitle"] — @T["brand"]</PageTitle>
+<div class="auth-screen auth-screen-standalone"><main class="auth-card" role="status">
+    <div class="auth-heading-icon"><AppIcon Name="mail" Size="20" /></div>
+    <h1 class="auth-title">@T["emailChangeConfirmTitle"]</h1>
+    <p class="auth-subtitle">@message</p>
+    <a class="btn-main" href="/Account/Login">@T["backToLoginAction"]</a>
+</main></div>
+
+@code {
+    private string? message;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? UserId { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? Email { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? Code { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (UserId is null || Email is null || Code is null)
+        {
+            message = T["emailChangeInvalidLink"];
+            return;
+        }
+
+        var user = await UserManager.FindByIdAsync(UserId);
+        if (user is null)
+        {
+            message = T["emailChangeUserMissing"];
+            return;
+        }
+
+        string code;
+        try { code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(Code)); }
+        catch (FormatException)
+        {
+            message = T["emailChangeInvalidLink"];
+            return;
+        }
+
+        var existingEmail = await UserManager.FindByEmailAsync(Email);
+        var existingUsername = await UserManager.FindByNameAsync(Email);
+        if ((existingEmail is not null && existingEmail.Id != user.Id)
+            || (existingUsername is not null && existingUsername.Id != user.Id))
+        {
+            message = T["emailAlreadyInUse"];
+            return;
+        }
+
+        await using var transaction = await Db.Database.BeginTransactionAsync();
+        var result = await UserManager.ChangeEmailAsync(user, Email, code);
+        if (!result.Succeeded)
+        {
+            await transaction.RollbackAsync();
+            message = T["emailChangeFailed"];
+            return;
+        }
+
+        // In our UI email and user name are one and the same, so when we update the email
+        // we need to update the user name.
+        var setUserNameResult = await UserManager.SetUserNameAsync(user, Email);
+        if (!setUserNameResult.Succeeded)
+        {
+            await transaction.RollbackAsync();
+            message = T["emailChangeFailed"];
+            return;
+        }
+
+        await transaction.CommitAsync();
+
+        if (HttpContext.User.Identity?.IsAuthenticated == true
+            && UserManager.GetUserId(HttpContext.User) == user.Id)
+            await SignInManager.RefreshSignInAsync(user);
+
+        message = T["emailChangeComplete"];
+    }
+}
+

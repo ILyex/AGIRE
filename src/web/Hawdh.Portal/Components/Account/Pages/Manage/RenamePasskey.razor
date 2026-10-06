@@ -1,0 +1,93 @@
+@page "/Account/Manage/RenamePasskey/{Id}"
+@attribute [Authorize(Policy = "AdminMfa")]
+
+@using Hawdh.Portal.Data
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using System.Buffers.Text
+
+@inject UserManager<ApplicationUser> UserManager
+@inject IdentityRedirectManager RedirectManager
+@inject UiText T
+
+<PageTitle>@T["passkeyRenameTitle"] — @T["brand"]</PageTitle>
+<section class="account-security-page password-change-page">
+    <header class="account-security-heading">
+        <span class="account-security-icon"><AppIcon Name="key" Size="20" /></span>
+        <div><h2>@T["passkeyRenameTitle"]</h2><p>@T["passkeyRenameHint"]</p></div>
+    </header>
+    <EditForm class="account-form-stack account-password-form" Model="Input" OnValidSubmit="Rename" FormName="rename-passkey" method="post">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" role="alert" />
+        <div class="account-field">
+            <label for="Input.Name">@T["passkeyName"]</label>
+            <InputText @bind-Value="Input.Name" id="Input.Name" class="form-control" aria-required="true" maxlength="200" />
+            <ValidationMessage For="() => Input.Name" class="text-danger" />
+        </div>
+        <button type="submit" class="btn-main account-form-submit"><AppIcon Name="check" Size="16" />@T["continue"]</button>
+    </EditForm>
+</section>
+
+@code {
+    private ApplicationUser? user;
+    private UserPasskeyInfo? passkey;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [Parameter]
+    public string? Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new();
+
+        user = (await UserManager.GetUserAsync(HttpContext.User))!;
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        byte[] credentialId;
+        try
+        {
+            credentialId = Base64Url.DecodeFromChars(Id);
+        }
+        catch (FormatException)
+        {
+            RedirectManager.RedirectToWithStatus("Account/Manage/Passkeys", $"Error: {T["invalidPasskeyId"]}", HttpContext);
+            return;
+        }
+
+        passkey = await UserManager.GetPasskeyAsync(user, credentialId);
+        if (passkey is null)
+        {
+            RedirectManager.RedirectToWithStatus("Account/Manage/Passkeys", $"Error: {T["passkeyNotFound"]}", HttpContext);
+            return;
+        }
+    }
+
+    private async Task Rename()
+    {
+        passkey!.Name = Input.Name;
+        var result = await UserManager.AddOrUpdatePasskeyAsync(user!, passkey);
+        if (!result.Succeeded)
+        {
+            RedirectManager.RedirectToWithStatus("Account/Manage/Passkeys", $"Error: {T["passkeyRenameFailed"]}", HttpContext);
+            return;
+        }
+
+        RedirectManager.RedirectToWithStatus("Account/Manage/Passkeys", T["passkeyRenamed"], HttpContext);
+    }
+
+    private sealed class InputModel
+    {
+        [LocalizedRequired]
+        [LocalizedPasskeyNameLength]
+        public string Name { get; set; } = "";
+    }
+}

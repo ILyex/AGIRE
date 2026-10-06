@@ -1,0 +1,102 @@
+@page "/Account/Manage/DeletePersonalData"
+@attribute [Authorize(Policy = "AdminMfa")]
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using Hawdh.Portal.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IdentityRedirectManager RedirectManager
+@inject ILogger<DeletePersonalData> Logger
+@inject UiText T
+
+<PageTitle>@T["deleteAccount"] — @T["brand"]</PageTitle>
+
+<StatusMessage Message="@message" />
+
+<section class="account-form-page account-delete-page">
+    <header class="account-form-heading">
+        <span class="account-form-icon is-danger"><AppIcon Name="trash" Size="18" /></span>
+        <div><h2>@T["deleteAccount"]</h2><p>@T["deleteAccountHint"]</p></div>
+    </header>
+    <aside class="account-security-notice is-critical" role="alert">
+        <AppIcon Name="shield" Size="17" />
+        <div><b>@T["permanentActionWarningTitle"]</b><p>@T["deleteAccountWarning"]</p></div>
+    </aside>
+    <EditForm class="account-form-stack" Model="Input" FormName="delete-user" OnValidSubmit="OnValidSubmitAsync" method="post">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" role="alert" />
+        @if (requirePassword)
+        {
+            <div class="account-field">
+                <label for="Input.Password">@T["password"]</label>
+                <InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" required="@requirePassword" placeholder="@T["enterPasswordToConfirm"]" />
+                <ValidationMessage For="() => Input.Password" class="text-danger" />
+            </div>
+        }
+        <div class="account-form-actions">
+            <a class="btn-outline" href="Account/Manage/PersonalData"><AppIcon Name="arrow" Size="15" />@T["cancel"]</a>
+            <button class="btn-danger-outline account-delete-confirm" type="submit"><AppIcon Name="trash" Size="16" />@T["confirmDeleteAccount"]</button>
+        </div>
+    </EditForm>
+</section>
+
+@code {
+    private string? message;
+    private ApplicationUser? user;
+    private bool requirePassword;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new();
+
+        user = await UserManager.GetUserAsync(HttpContext.User);
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+        requirePassword = await UserManager.HasPasswordAsync(user);
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        if (requirePassword && !await UserManager.CheckPasswordAsync(user, Input.Password))
+        {
+            message = $"Error: {T["incorrectPassword"]}";
+            return;
+        }
+
+        var result = await UserManager.DeleteAsync(user);
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException("Unexpected error occurred deleting user.");
+        }
+
+        await SignInManager.SignOutAsync();
+
+        var userId = await UserManager.GetUserIdAsync(user);
+        Logger.LogInformation("User with ID '{UserId}' deleted themselves.", userId);
+
+        RedirectManager.RedirectToCurrentPage();
+    }
+
+    private sealed class InputModel
+    {
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+    }
+}

@@ -1,0 +1,14 @@
+:root {
+  --font-latin: "Plus Jakarta Sans", sans-serif;
+  --font-arabic: "IBM Plex Sans Arabic", "Plus Jakarta Sans", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  font-family: var(--font-arabic);
+  font-variant-numeric: tabular-nums;
+}
+html, body { font-family: var(--font-arabic) !important; font-variant-numeric: tabular-nums; }
+body :where(button, input, select, textarea, .btn-main, .btn-quiet, .btn-outline, .btn-danger, .side-link, .mobile-nav a, .language-toggle, .logout-button) { font-family: inherit; }
+html[lang^="ar"] body, html[lang^="ar"] body :where(button, input, select, textarea) { font-family: var(--font-arabic) !important; letter-spacing: normal; }
+html[lang^="fr"] body, html[lang^="fr"] body :where(button, input, select, textarea) { font-family: var(--font-latin) !important; }
+.money, .kpi-value, .donut-center b, .numeric, .mono, code, pre, input[type="number"], .table-count b { font-family: var(--font-mono) !important; font-variant-numeric: tabular-nums lining-nums; }
+.language-toggle, .language-label { font-family: var(--font-mono) !important; }
+.chart-label { font-family: var(--font-mono), var(--font-arabic) !important; } input[type="date"], input[type="datetime-local"], input[type="time"] { font-family: var(--font-mono), var(--font-arabic) !important; font-variant-numeric: tabular-nums; }

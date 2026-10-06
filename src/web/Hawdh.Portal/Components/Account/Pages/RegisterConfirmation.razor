@@ -1,0 +1,10 @@
+@page "/Account/RegisterConfirmation"
+@attribute [AllowAnonymous]
+@inject UiText T
+
+<PageTitle>@T["registerConfirmationTitle"] — @T["brand"]</PageTitle>
+
+<main class="auth-card" role="status">
+    <h1 class="auth-title">@T["registerConfirmationTitle"]</h1>
+    <p class="auth-subtitle">@T["confirmationEmailSent"]</p>
+</main>

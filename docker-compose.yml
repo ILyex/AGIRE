@@ -1,0 +1,36 @@
+# Local development only. Do not use this HTTP-only mapping with real client data.
+services:
+  database:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hawdh}
+      POSTGRES_USER: ${POSTGRES_USER:-hawdh_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the local .env file}
+    volumes:
+      - hawdh-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hawdh_app} -d ${POSTGRES_DB:-hawdh}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  web:
+    build:
+      context: ./src/web/Hawdh.Portal
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Database__Provider: PostgreSQL
+      ConnectionStrings__DefaultConnection: Host=database;Port=5432;Database=${POSTGRES_DB:-hawdh};Username=${POSTGRES_USER:-hawdh_app};Password=${POSTGRES_PASSWORD}
+      SeedAdmin__Email: ${SEED_ADMIN_EMAIL:?Set SEED_ADMIN_EMAIL in the local .env file}
+      SeedAdmin__Password: ${SEED_ADMIN_PASSWORD:?Set SEED_ADMIN_PASSWORD in the local .env file}
+    ports:
+      - "127.0.0.1:5080:8080"
+
+volumes:
+  hawdh-postgres:

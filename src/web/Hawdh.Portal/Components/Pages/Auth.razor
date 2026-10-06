@@ -1,0 +1,14 @@
+﻿@page "/auth"
+
+@using Microsoft.AspNetCore.Authorization
+
+@attribute [Authorize]
+@inject UiText T
+
+<PageTitle>@T["notAuthenticatedTitle"] — @T["brand"]</PageTitle>
+
+<h1>@T["notAuthenticatedTitle"]</h1>
+
+<AuthorizeView>
+    @T["loggedInAs"] @context.User.Identity?.Name!
+</AuthorizeView>

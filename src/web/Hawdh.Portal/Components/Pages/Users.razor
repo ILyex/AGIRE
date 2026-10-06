@@ -1,0 +1,60 @@
+@page "/users"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles="Administrator", Policy="AdminMfa")]
+@inject IServiceScopeFactory ScopeFactory
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UiText T
+
+<PageTitle>@T["users"] — @T["brand"]</PageTitle>
+<div class="page-heading"><div><h1 class="page-title">@T["userManagement"]</h1><p class="page-description">@T["userHint"]</p></div><button class="btn-main" @onclick="OpenForm"><AppIcon Name="plus" Size="16" />@T["createUser"]</button></div>
+@if (!CurrentAdminMfa) { <div class="security-notice"><AppIcon Name="shield" Size="20" /><div><b>@T["twoFactor"]</b><p>@T["securityReminder"]</p></div><a class="security-notice-link" href="/Account/Manage/TwoFactorAuthentication"><span>@T["settings"]</span><AppIcon Name="arrow" Size="14" /></a></div> }
+<section class="panel table-panel users-panel"><div class="table-toolbar"><div><h2 class="panel-title">@T["users"]</h2><span class="table-count">@Rows.Count</span></div><input class="search-box" placeholder="⌕  @T["search"]" @bind="Query" @bind:event="oninput" /></div>
+@if (!Filtered.Any()) { <div class="empty-state"><div class="empty-icon"><AppIcon Name="users" Size="21" /></div><b>@T["noData"]</b></div> }
+else { <div class="table-scroll users-table-scroll"><table class="users-table"><thead><tr><th>@T["name"]</th><th>@T["email"]</th><th>@T["role"]</th><th>@T["twoFactor"]</th><th>@T["accountState"]</th><th>@T["actions"]</th></tr></thead><tbody>
+@foreach(var r in Filtered){<tr><td><div class="person-cell"><span class="person-avatar">@r.DisplayName[..1]</span><span class="person-name">@r.DisplayName</span></div></td><td class="user-email-cell" title="@r.Email">@r.Email</td><td>@RoleLabel(r.Role)</td><td><span class="status-pill @(r.TwoFactor ? "" : "due")">● @(r.TwoFactor ? T["enabled"] : T["disabled"])</span></td><td><span class="status-pill @(r.Active ? "" : "due")">● @(r.Active ? T["active"] : T["inactive"])</span></td><td>@if(r.Email!=CurrentEmail){<button class="small-icon-btn" @onclick="()=>Toggle(r)">@(r.Active?T["deactivate"]:T["activate"])</button>}else{<span class="secondary-text">—</span>}</td></tr>}
+</tbody></table></div> }</section>
+@if (!string.IsNullOrEmpty(Toast)) { <div class="toast-host" role="status">@Toast</div> }
+@if (ModalOpen)
+{
+<div class="modal-backdrop" @onclick="Close"><section class="modal-card" role="dialog" aria-modal="true" @onclick:stopPropagation="true"><div class="modal-heading"><h2>@T["createUser"]</h2><button type="button" class="modal-close" aria-label="@T["close"]" @onclick="Close"><AppIcon Name="close" Size="18" /></button></div>
+<EditForm Model="Form" OnValidSubmit="Save"><DataAnnotationsValidator/><ValidationSummary class="validation-errors"/><div class="form-grid">
+<div class="field full"><label>@T["name"] *</label><InputText class="form-control" @bind-Value="Form.DisplayName" maxlength="120" /></div>
+<div class="field full"><label>@T["email"] *</label><InputText class="form-control" type="email" @bind-Value="Form.Email" autocomplete="off" maxlength="256" /></div>
+<div class="field full"><label>@T["temporaryPassword"] *</label><InputText class="form-control" type="password" @bind-Value="Form.Password" autocomplete="new-password" minlength="12" /></div>
+<div class="field full"><label>@T["role"]</label><SelectMenu TValue="string" Label="@T["role"]" Options="RoleOptions" @bind-Value="Form.Role" /></div>
+</div><p class="form-help">@T["securityReminder"]</p><div class="modal-footer"><button type="submit" class="btn-main">@T["createUser"]</button><button type="button" class="btn-outline" @onclick="Close">@T["cancel"]</button></div></EditForm>
+</section></div>
+}
+
+@code {
+    private List<UserRow> Rows=[]; private bool ModalOpen, CurrentAdminMfa=true; private string Query="",CurrentEmail="",Toast=""; private UserForm Form=new();
+    private IReadOnlyList<SelectOption> RoleOptions => [new("Billing", T["billingRole"]), new("ReadOnly", T["readRole"]), new("Administrator", T["admin"])];
+    private IEnumerable<UserRow> Filtered=>Rows.Where(x=>$"{x.DisplayName} {x.Email} {x.Role}".Contains(Query,StringComparison.CurrentCultureIgnoreCase));
+    protected override async Task OnInitializedAsync()=>await Reload();
+    private async Task Reload()
+    {
+        var principal=(await AuthenticationStateProvider.GetAuthenticationStateAsync()).User;CurrentEmail=principal.Identity?.Name??"";
+        await using var scope=ScopeFactory.CreateAsyncScope();var manager=scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();var users=await manager.Users.OrderBy(u=>u.Email).ToListAsync();Rows=[];
+        foreach(var u in users){var roles=await manager.GetRolesAsync(u);Rows.Add(new(u.Id,u.DisplayName,u.Email??"",roles.FirstOrDefault()??"—",u.TwoFactorEnabled,u.IsActive));if(u.Email==CurrentEmail&&roles.Contains("Administrator"))CurrentAdminMfa=u.TwoFactorEnabled;}
+    }
+    private void OpenForm(){Form=new();ModalOpen=true;} private void Close()=>ModalOpen=false;
+    private async Task Save()
+    {
+        var principal=(await AuthenticationStateProvider.GetAuthenticationStateAsync()).User;if(!principal.IsInRole("Administrator")){Toast=T["noAccess"];return;}
+        if(Form.Role is not ("Billing" or "ReadOnly" or "Administrator")){Toast=T["noAccess"];return;}
+        await using var scope=ScopeFactory.CreateAsyncScope();var manager=scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();var db=scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();await using var tx=await db.Database.BeginTransactionAsync();
+        var user=new ApplicationUser{UserName=Form.Email.Trim(),Email=Form.Email.Trim(),DisplayName=Form.DisplayName.Trim(),EmailConfirmed=true,IsActive=true,LockoutEnabled=true};var result=await manager.CreateAsync(user,Form.Password);
+        if(!result.Succeeded){Toast=string.Join(" · ",result.Errors.Select(e=>e.Code));return;}
+        result=await manager.AddToRoleAsync(user,Form.Role);if(!result.Succeeded){await tx.RollbackAsync();Toast=T["noAccess"];return;}
+        db.AuditEntries.Add(new AuditEntry{Actor=CurrentEmail,Action="UserCreated",EntityType="User",EntityId=user.Id,Details=$"{user.Email}; {Form.Role}"});await db.SaveChangesAsync();await tx.CommitAsync();ModalOpen=false;Toast=T["userAdded"];await Reload();
+    }
+    private async Task Toggle(UserRow row)
+    {
+        var principal=(await AuthenticationStateProvider.GetAuthenticationStateAsync()).User;if(!principal.IsInRole("Administrator")||row.Email==CurrentEmail){Toast=T["noAccess"];return;}
+        await using var scope=ScopeFactory.CreateAsyncScope();var manager=scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();var db=scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();var user=await manager.FindByIdAsync(row.Id);if(user is null)return;user.IsActive=!user.IsActive;if(!user.IsActive)user.LockoutEnd=DateTimeOffset.MaxValue;else user.LockoutEnd=null;var update=await manager.UpdateAsync(user);if(!update.Succeeded){Toast=T["noAccess"];return;}var stamp=await manager.UpdateSecurityStampAsync(user);if(!stamp.Succeeded){Toast=T["noAccess"];return;}db.AuditEntries.Add(new AuditEntry{Actor=CurrentEmail,Action=user.IsActive?"UserActivated":"UserSuspended",EntityType="User",EntityId=user.Id,Details=user.Email});await db.SaveChangesAsync();await Reload();
+    }
+    private string RoleLabel(string role)=>role switch{"Administrator"=>T["admin"],"Billing"=>T["billingRole"],"ReadOnly"=>T["readRole"],_=>role};
+    private sealed record UserRow(string Id,string DisplayName,string Email,string Role,bool TwoFactor,bool Active);
+    private sealed class UserForm{[Required,MinLength(2),MaxLength(120)]public string DisplayName{get;set;}="";[Required,EmailAddress,MaxLength(256)]public string Email{get;set;}="";[Required,MinLength(12),MaxLength(128)]public string Password{get;set;}="";[Required]public string Role{get;set;}="Billing";}
+}

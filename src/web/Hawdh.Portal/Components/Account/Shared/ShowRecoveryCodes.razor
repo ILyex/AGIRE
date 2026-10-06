@@ -1,0 +1,26 @@
+@inject UiText T
+
+<div class="account-security-page recovery-codes-page">
+    <StatusMessage Message="@StatusMessage" />
+    <header class="account-security-heading">
+        <span class="account-security-icon"><AppIcon Name="key" Size="19" /></span>
+        <div><h2>@T["recoveryCodesTitle"]</h2><p>@T["recoveryCodesWarning"]</p></div>
+    </header>
+    <div class="recovery-code-grid" dir="ltr">
+        @foreach (var recoveryCode in RecoveryCodes)
+        {
+            <code class="recovery-code">@recoveryCode</code>
+        }
+    </div>
+    <div class="account-security-actions">
+        <a class="btn-main" href="/Account/Manage/TwoFactorAuthentication">@T["returnToSecuritySettings"]</a>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string[] RecoveryCodes { get; set; } = [];
+
+    [Parameter]
+    public string? StatusMessage { get; set; }
+}

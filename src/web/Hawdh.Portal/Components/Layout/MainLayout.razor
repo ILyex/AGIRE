@@ -1,0 +1,117 @@
+@inherits LayoutComponentBase
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Authorization
+@inject UiText T
+@inject NavigationManager Navigation
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using Hawdh.Portal.Data
+
+@if (ShowProfileSetup)
+{
+    <div class="profile-setup-backdrop" role="dialog" aria-modal="true" dir="@(IsFrench ? "ltr" : "rtl")">
+        <section class="profile-setup-card">
+            <header class="profile-setup-heading">
+                <div><h2>@(IsFrench ? "Complétez votre profil" : "أكمل بياناتك")</h2><p>@(IsFrench ? "Saisissez vos informations une seule fois pour les afficher dans la plateforme." : "أدخل بياناتك مرة واحدة لتظهر في المنصة.")</p></div>
+                <button class="profile-setup-close" type="button" aria-label="@(IsFrench ? "Fermer" : "إغلاق")" disabled><AppIcon Name="close" Size="18" /></button>
+            </header>
+            <div class="profile-setup-divider"></div>
+            <form method="post" action="/Account/CompleteProfile">
+                <AntiforgeryToken />
+                <div class="profile-setup-grid">
+                    <label>@(IsFrench ? "Prénom" : "الاسم")<input class="form-control" name="FirstName" value="@ProfileFirstName" placeholder="@(IsFrench ? "Prénom" : "الاسم")" required maxlength="80" /></label>
+                    <label>@(IsFrench ? "Nom" : "اللقب")<input class="form-control" name="LastName" value="@ProfileLastName" placeholder="@(IsFrench ? "Nom" : "اللقب")" required maxlength="80" /></label>
+                    <label>@(IsFrench ? "Grade ou fonction" : "الرتبة أو الوظيفة")<input class="form-control" name="Rank" value="@ProfileRank" placeholder="@(IsFrench ? "Grade ou fonction" : "الرتبة أو الوظيفة")" required maxlength="120" /></label>
+                </div>
+                <button class="btn-main profile-setup-submit" type="submit">@(IsFrench ? "Enregistrer et continuer" : "حفظ والمتابعة")</button>
+            </form>
+            @if (!string.IsNullOrWhiteSpace(ProfileError)) { <div class="alert-error">@ProfileError</div> }
+        </section>
+    </div>
+}
+
+<div class="app-shell">
+    <aside class="sidebar"><NavMenu /></aside>
+    <section class="workspace">
+        <header class="topbar">
+            <div class="mobile-brand"><div class="mobile-agency-lockup"><img class="agency-logo agency-logo-mobile mobile-logo-light" src="/images/agire-logo-tiaret-transparent.png?v=20261006-6" alt="@T["brand"]" draggable="false" /><img class="agency-logo agency-logo-mobile mobile-logo-dark" src="/images/agire-logo-tiaret-dark.png?v=20261006-6" alt="" aria-hidden="true" draggable="false" /></div></div>
+            <nav class="breadcrumb" aria-label="@T["workspace"]"><span class="breadcrumb-root"><AppIcon Name="dashboard" Size="14" />@T["workspace"]</span><span class="crumb-sep" aria-hidden="true">›</span><b>@PageName</b></nav>
+            <button type="button" class="sidebar-toggle topbar-sidebar-toggle" data-sidebar-toggle data-hide-label="@T["hideSidebar"]" data-show-label="@T["showSidebar"]" aria-label="@T["hideSidebar"]" aria-expanded="true" title="@T["hideSidebar"]"><AppIcon Name="sidebar" Size="17" /></button>
+            <div class="topbar-actions">
+                <div class="topbar-preferences" aria-label="@T["settings"]">
+                    <button type="button" class="theme-toggle" data-dark-label="@T["darkMode"]" data-light-label="@T["lightMode"]" aria-label="@T["darkMode"]" title="@T["darkMode"]"><span class="theme-toggle-icon" data-state="moon"><AppIcon Name="moon" Class="theme-icon-moon" Size="14" /><AppIcon Name="sun" Class="theme-icon-sun" Size="14" /></span><span class="theme-toggle-label visually-hidden">@T["darkMode"]</span></button>
+                    <a class="language-toggle" href="@CultureLink" data-enhance-nav="false" title="@T["switchLanguage"]"><AppIcon Name="globe" Class="language-icon" Size="14" /><span class="language-label visually-hidden">@T["switch"]</span></a>
+                </div>
+                <time class="topbar-datetime" data-live-clock datetime="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")"><span class="topbar-date" data-clock-date><em data-clock-date-full>@DateTime.Now.ToString("D", CultureInfo.CurrentUICulture)</em></span><b class="topbar-time" data-clock-time>@DateTime.Now.ToString("HH:mm")</b></time>
+                <AuthorizeView>
+                    <Authorized Context="auth">
+                <div class="topbar-account">
+                            <div class="user-chip"><div class="avatar">@Initial(DisplayName)</div><div class="user-meta"><b>@DisplayName</b><small>@JobTitle</small></div></div>
+                            <form action="/Account/Logout" method="post" class="logout-form"><AntiforgeryToken /><input type="hidden" name="ReturnUrl" value="" /><button type="submit" class="logout-button" title="@T["logout"]" aria-label="@T["logout"]"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg><span class="logout-label">@T["logout"]</span></button></form>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </header>
+        <nav class="mobile-nav" aria-label="@T["menu"]">
+            <NavLink href="/" Match="NavLinkMatch.All"><AppIcon Name="dashboard" Class="mobile-nav-icon" Size="17" />@T["dashboard"]</NavLink>
+            <NavLink href="/customers"><AppIcon Name="customers" Class="mobile-nav-icon" Size="17" />@T["customers"]</NavLink>
+            <NavLink href="/invoices"><AppIcon Name="invoices" Class="mobile-nav-icon" Size="17" />@T["invoices"]</NavLink>
+            <NavLink href="/usage"><AppIcon Name="water" Class="mobile-nav-icon" Size="17" />@T["usage"]</NavLink>
+            <NavLink href="/reports"><AppIcon Name="reports" Class="mobile-nav-icon" Size="17" />@T["reports"]</NavLink>
+            <AuthorizeView Roles="Administrator"><Authorized><NavLink href="/settings/tariff"><AppIcon Name="settings" Class="mobile-nav-icon" Size="17" />@T["tariffSettings"]</NavLink></Authorized></AuthorizeView>
+            <AuthorizeView Roles="Administrator"><Authorized><NavLink href="/users"><AppIcon Name="users" Class="mobile-nav-icon" Size="17" />@T["users"]</NavLink></Authorized></AuthorizeView>
+        </nav>
+        <main class="content-area">@Body</main>
+        <footer class="app-footer"><span>© @DateTime.Now.Year @T["brand"]</span><span>@T["footerSecure"]</span></footer>
+    </section>
+</div>
+
+@code {
+    private string DisplayName = "";
+    private string JobTitle = "";
+    private bool ShowProfileSetup;
+    private string ProfileFirstName = "";
+    private string ProfileLastName = "";
+    private string ProfileRank = "";
+    private string ProfileError = "";
+    protected override async Task OnInitializedAsync()
+    {
+        var principal = (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User;
+        var user = await UserManager.GetUserAsync(principal);
+        if (user is not null && !user.ProfileCompleted)
+        {
+            ShowProfileSetup = true;
+            ProfileFirstName = user.FirstName;
+            ProfileLastName = user.LastName;
+            ProfileRank = user.Rank;
+        }
+        var name = string.IsNullOrWhiteSpace(user?.DisplayName) ? user?.UserName ?? principal.Identity?.Name ?? "" : user.DisplayName.Trim();
+        var at = name.IndexOf('@');
+        name = at > 0 ? name[..at] : name;
+        var isArabic = CultureInfo.CurrentUICulture.Name.StartsWith("ar", StringComparison.OrdinalIgnoreCase);
+        DisplayName = user?.ProfileCompleted == true ? user.DisplayName.Trim() : string.Equals(name, "Administrator", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(name, "MOUTFI AHMED", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(name, "موتفي أحمد", StringComparison.Ordinal)
+                ? isArabic ? "موتفي أحمد" : "MOUTFI AHMED"
+                : name;
+        JobTitle = string.IsNullOrWhiteSpace(user?.JobTitle) ? (isArabic ? "مهندس هيدروليك" : CurrentCulture == "fr-DZ" ? "Ingénieur hydraulicien" : "Hydraulic Engineer") : user.JobTitle;
+    }
+    private async Task SaveProfile()
+    {
+        ProfileError = "";
+        if (string.IsNullOrWhiteSpace(ProfileFirstName) || string.IsNullOrWhiteSpace(ProfileLastName) || string.IsNullOrWhiteSpace(ProfileRank)) { ProfileError = "أكمل جميع البيانات المطلوبة."; return; }
+        var principal = (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User;
+        var user = await UserManager.GetUserAsync(principal);
+        if (user is null) return;
+        user.FirstName = ProfileFirstName.Trim(); user.LastName = ProfileLastName.Trim(); user.Rank = ProfileRank.Trim(); user.JobTitle = user.Rank; user.DisplayName = $"{user.FirstName} {user.LastName}"; user.ProfileCompleted = true;
+        var result = await UserManager.UpdateAsync(user);
+        if (!result.Succeeded) { ProfileError = "تعذر حفظ البيانات. حاول مرة أخرى."; return; }
+        ShowProfileSetup = false; DisplayName = user.DisplayName; JobTitle = user.JobTitle;
+    }
+    private string CurrentCulture => CultureInfo.CurrentUICulture.Name.StartsWith("fr", StringComparison.OrdinalIgnoreCase) ? "fr-DZ" : "ar-DZ";
+    private bool IsFrench => CurrentCulture == "fr-DZ";
+    private string CultureLink => $"/culture/{(CurrentCulture == "ar-DZ" ? "fr-DZ" : "ar-DZ")}?returnUrl={Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery)}";
+    private string PageName => Navigation.Uri.Contains("customers", StringComparison.OrdinalIgnoreCase) ? T["customers"] : Navigation.Uri.Contains("invoices", StringComparison.OrdinalIgnoreCase) ? T["invoices"] : Navigation.Uri.Contains("usage", StringComparison.OrdinalIgnoreCase) ? T["usage"] : Navigation.Uri.Contains("reports", StringComparison.OrdinalIgnoreCase) ? T["reports"] : T["dashboard"];
+    private static string Initial(string? value) => string.IsNullOrWhiteSpace(value) ? "م" : value.Trim()[0].ToString().ToUpperInvariant();
+}

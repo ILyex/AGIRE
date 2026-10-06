@@ -1,0 +1,27 @@
+# Build outputs and local databases must never enter the Docker build context.
+bin/
+obj/
+App_Data/
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+
+# Keep local credentials and developer-only configuration out of production images.
+.env
+.env.*
+appsettings.Local.json
+appsettings.*.Local.json
+appsettings.Development.json
+secrets.json
+*.pfx
+*.pem
+*.key
+
+# Repository and editor metadata are not part of the application image.
+.git/
+.vs/
+.idea/
+*.user
+*.suo

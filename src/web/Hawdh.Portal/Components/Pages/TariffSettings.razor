@@ -1,0 +1,90 @@
+@page "/settings/tariff"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Administrator", Policy = "AdminMfa")]
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UiText T
+
+<PageTitle>@T["tariffSettings"] — @T["brand"]</PageTitle>
+<div class="page-heading">
+    <div><span class="report-kicker"><AppIcon Name="settings" Size="15" /> @T["tariffSettings"]</span><h1 class="page-title">@T["tariffSettingsTitle"]</h1><p class="page-description">@T["tariffSettingsHint"]</p></div>
+</div>
+
+<section class="panel tariff-settings-panel">
+    <div class="tariff-settings-icon"><AppIcon Name="water" Size="22" /></div>
+    <div class="tariff-settings-copy"><h2>@T["tariffRate"]</h2><p>@T["tariffRateHint"]</p>
+        @if (Setting?.RatePerCubicMetre is decimal currentRate)
+        {
+            <div class="tariff-current"><span>@T["active"]</span><b>@currentRate.ToString("N4", CultureInfo.CurrentCulture) @T["currency"] / m³</b><small>@T["tariffUpdatedBy"]: @Setting.UpdatedBy · @Setting.UpdatedAtUtc.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</small></div>
+        }
+        else
+        {
+            <div class="tariff-warning"><AppIcon Name="info" Size="16" />@T["tariffNotSetHint"]</div>
+        }
+    </div>
+    <EditForm Model="Form" OnValidSubmit="Save">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="validation-errors" />
+        <div class="field">
+            <label for="water-tariff">@T["tariffRate"] (@T["currency"]/m³) *</label>
+            <InputNumber id="water-tariff" class="form-control tariff-rate-input" @bind-Value="Form.Rate" min="0.0001" max="99999999999999.9999" step="0.0001" inputmode="decimal" />
+            <ValidationMessage For="() => Form.Rate" class="validation-message" />
+        </div>
+        <div class="tariff-settings-actions"><button class="btn-main" type="submit"><AppIcon Name="save" Size="16" />@T["save"]</button></div>
+    </EditForm>
+</section>
+@if (!string.IsNullOrWhiteSpace(Toast)) { <div class="toast-host" role="status">@Toast</div> }
+
+@code {
+    private WaterTariffSetting? Setting;
+    private TariffForm Form = new();
+    private string Toast = "";
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        Setting = await db.WaterTariffSettings.AsNoTracking().SingleOrDefaultAsync(x => x.Id == 1);
+        Form.Rate = Setting?.RatePerCubicMetre ?? 0m;
+    }
+
+    private async Task Save()
+    {
+        var user = (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User;
+        if (!user.IsInRole("Administrator")) { Toast = T["noAccess"]; return; }
+        if (Form.Rate <= 0 || Form.Rate > 99999999999999.9999m) { Toast = T["tariffRequired"]; return; }
+        if (decimal.Round(Form.Rate, 4, MidpointRounding.AwayFromZero) != Form.Rate) { Toast = T["tariffPrecision"]; return; }
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        var setting = await db.WaterTariffSettings.SingleOrDefaultAsync(x => x.Id == 1);
+        if (setting is null)
+        {
+            setting = new WaterTariffSetting { Id = 1 };
+            db.WaterTariffSettings.Add(setting);
+        }
+        var oldRate = setting.RatePerCubicMetre;
+        setting.RatePerCubicMetre = Form.Rate;
+        setting.UpdatedAtUtc = DateTime.UtcNow;
+        setting.UpdatedBy = user.Identity?.Name ?? "";
+        db.AuditEntries.Add(new AuditEntry
+        {
+            Actor = setting.UpdatedBy,
+            Action = "WaterTariffChanged",
+            EntityType = "WaterTariffSetting",
+            EntityId = "1",
+            Details = $"{oldRate?.ToString(CultureInfo.InvariantCulture) ?? "unset"} -> {Form.Rate.ToString(CultureInfo.InvariantCulture)} DZD/m3"
+        });
+        await db.SaveChangesAsync();
+        await tx.CommitAsync();
+        Setting = setting;
+        Toast = T["tariffSaved"];
+    }
+
+    private sealed class TariffForm
+    {
+        [Range(typeof(decimal), "0.0001", "99999999999999.9999")]
+        public decimal Rate { get; set; }
+    }
+}

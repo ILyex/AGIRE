@@ -1,0 +1,77 @@
+@page "/Account/Manage/GenerateRecoveryCodes"
+@attribute [Authorize(Policy = "AdminMfa")]
+
+@using Microsoft.AspNetCore.Identity
+@using Hawdh.Portal.Data
+@inject UiText T
+@inject UserManager<ApplicationUser> UserManager
+@inject IdentityRedirectManager RedirectManager
+@inject ILogger<GenerateRecoveryCodes> Logger
+
+<PageTitle>@T["resetRecoveryCodes"] — @T["brand"]</PageTitle>
+
+@if (recoveryCodes is not null)
+{
+    <ShowRecoveryCodes RecoveryCodes="recoveryCodes.ToArray()" StatusMessage="@message" />
+}
+else
+{
+    <div class="account-security-page">
+        <StatusMessage />
+        <header class="account-security-heading">
+            <span class="account-security-icon is-warning"><AppIcon Name="key" Size="19" /></span>
+            <div><h2>@T["resetRecoveryCodes"]</h2><p>@T["recoveryCodesWarning"]</p></div>
+        </header>
+        <div class="account-security-notice is-critical" role="alert">
+            <AppIcon Name="warning" Size="17" />
+            <div><b>@T["recoveryCodesWarning"]</b><p>@T["recoveryCodesResetWarning"]</p></div>
+        </div>
+        <form class="account-security-actions" @formname="generate-recovery-codes" @onsubmit="OnSubmitAsync" method="post">
+            <AntiforgeryToken />
+            <button class="btn-danger-outline" type="submit"><AppIcon Name="refresh" Size="15" />@T["confirmGenerateRecoveryCodes"]</button>
+            <a href="/Account/Manage/TwoFactorAuthentication" class="btn-outline">@T["cancel"]</a>
+        </form>
+    </div>
+}
+
+@code {
+    private string? message;
+    private ApplicationUser? user;
+    private IEnumerable<string>? recoveryCodes;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        user = await UserManager.GetUserAsync(HttpContext.User);
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        if (!await UserManager.GetTwoFactorEnabledAsync(user))
+            RedirectManager.RedirectToWithStatus("/Account/Manage/TwoFactorAuthentication", T["twoFactorDisabled"], HttpContext);
+    }
+
+    private async Task OnSubmitAsync()
+    {
+        if (user is null || !await UserManager.GetTwoFactorEnabledAsync(user))
+        {
+            RedirectManager.RedirectToWithStatus("/Account/Manage/TwoFactorAuthentication", T["twoFactorDisabled"], HttpContext);
+            return;
+        }
+
+        recoveryCodes = await UserManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
+        if (recoveryCodes is null)
+        {
+            Logger.LogError("Could not generate two-factor recovery codes for user {UserId}.", user.Id);
+            RedirectManager.RedirectToWithStatus("/Account/Manage/TwoFactorAuthentication", T["operationFailed"], HttpContext);
+            return;
+        }
+
+        message = T["recoveryCodesWarning"];
+        Logger.LogInformation("User with ID '{UserId}' has generated new 2FA recovery codes.", user.Id);
+    }
+}

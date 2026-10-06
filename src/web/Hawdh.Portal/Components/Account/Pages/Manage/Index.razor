@@ -1,0 +1,93 @@
+@page "/Account/Manage"
+@attribute [Authorize(Policy = "AdminMfa")]
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using Hawdh.Portal.Data
+@inject UiText T
+
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>@T["profileTitle"] — @T["brand"]</PageTitle>
+
+<StatusMessage />
+
+<section class="account-form-page">
+    <header class="account-form-heading">
+        <span class="account-form-icon"><AppIcon Name="users" Size="18" /></span>
+        <div><h2>@T["profileTitle"]</h2><p>@T["profilePageHint"]</p></div>
+    </header>
+    <EditForm class="account-form-stack" Model="Input" FormName="profile" OnValidSubmit="OnValidSubmitAsync" method="post">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+            <div class="account-readonly-field">
+                <label for="username">@T["username"]</label>
+                <input type="text" value="@username" id="username" class="form-control" placeholder="@T["username"]" disabled />
+            </div>
+            <div class="account-field">
+                <label for="Input.PhoneNumber">@T["phoneNumber"]</label>
+                <InputText @bind-Value="Input.PhoneNumber" id="Input.PhoneNumber" class="form-control" placeholder="@T["enterPhoneNumber"]" />
+                <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
+            </div>
+            <button type="submit" class="btn-main account-form-submit"><AppIcon Name="check" Size="16" />@T["saveChanges"]</button>
+    </EditForm>
+</section>
+
+@code {
+    private ApplicationUser? user;
+    private string? username;
+    private string? phoneNumber;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new();
+
+        user = await UserManager.GetUserAsync(HttpContext.User);
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        username = await UserManager.GetUserNameAsync(user);
+        phoneNumber = await UserManager.GetPhoneNumberAsync(user);
+
+        Input.PhoneNumber ??= phoneNumber;
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        if (Input.PhoneNumber != phoneNumber)
+        {
+            var setPhoneResult = await UserManager.SetPhoneNumberAsync(user, Input.PhoneNumber);
+            if (!setPhoneResult.Succeeded)
+            {
+                RedirectManager.RedirectToCurrentPageWithStatus($"Error: {T["profileSaveFailed"]}", HttpContext);
+                return;
+            }
+        }
+
+        await SignInManager.RefreshSignInAsync(user);
+        RedirectManager.RedirectToCurrentPageWithStatus(T["profileSaved"], HttpContext);
+    }
+
+    private sealed class InputModel
+    {
+        [LocalizedPhone]
+        public string? PhoneNumber { get; set; }
+    }
+}

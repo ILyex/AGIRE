@@ -1,0 +1,160 @@
+@page "/reports"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Administrator,Billing,ReadOnly", Policy = "AdminMfa")]
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject UiText T
+
+<PageTitle>@T["reportsTitle"] — @T["brand"]</PageTitle>
+<div class="page-heading report-page-heading">
+    <div><span class="report-kicker"><AppIcon Name="reports" Size="14" /> @T["reports"]</span><h1 class="page-title">@T["reportsTitle"]</h1><p class="page-description">@T["reportHint"]</p></div>
+    <div class="report-heading-actions"><span class="report-period-badge"><AppIcon Name="calendar" Size="15" /> @PeriodLabel</span><button type="button" class="btn-main" @onclick="OpenPreview" disabled="Loading"><AppIcon Name="preview" Size="16" />@T["previewAndPrint"]</button></div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(PrintMessage)) { <div class="alert-error" role="alert">@PrintMessage</div> }
+<section class="report-filter panel" aria-label="@T["reportPeriod"]">
+    <div class="report-filter-copy"><span class="report-filter-icon"><AppIcon Name="calendar" Size="18" /></span><div><b>@T["reportPeriod"]</b><small>@T["reportPeriodHint"]</small></div></div>
+    <div class="report-filter-control"><label>@T["period"]</label><SelectMenu TValue="string" Label="@T["period"]" Options="ReportPeriodOptions" @bind-Value="SelectedPeriod" /></div>
+</section>
+
+@if (Loading)
+{
+    <section class="panel report-loading" role="status"><span class="loading-spinner"></span>@T["loading"]</section>
+}
+else
+{
+    <section class="report-grid report-summary-grid">
+        <article class="report-card"><span class="report-card-icon"><AppIcon Name="customers" Size="18" /></span><small>@T["customersTotal"]</small><b>@CustomerCount.ToString("N0")</b><span>@T["active"]</span></article>
+        <article class="report-card"><span class="report-card-icon amber"><AppIcon Name="invoices" Size="18" /></span><small>@T["invoices"]</small><b>@InvoiceCount.ToString("N0")</b><span>@Money(Invoiced, "DZD")</span></article>
+        <article class="report-card"><span class="report-card-icon green"><AppIcon Name="paid" Size="18" /></span><small>@T["collected"]</small><b>@Money(Collected, "DZD")</b><span>@T["paid"]</span></article>
+        <article class="report-card"><span class="report-card-icon amber"><AppIcon Name="debt" Size="18" /></span><small>@T["outstanding"]</small><b>@Money(Outstanding, "DZD")</b><span>@T["open"]</span></article>
+        <article class="report-card"><span class="report-card-icon blue"><AppIcon Name="water" Size="18" /></span><small>@T["usage"]</small><b>@Usage.ToString("N2") <small>m³</small></b><span>@T["consumption"]</span></article>
+    </section>
+
+    <section class="report-export panel">
+        <div class="report-export-head"><span class="report-emblem"><AppIcon Name="file" Size="23" /></span><div><span class="report-kicker">@T["officialReport"]</span><h2 class="panel-title">@T["reportsTitle"]</h2><p class="panel-subtitle">@T["excelWorkbookHint"]</p></div></div>
+        <div class="report-workbook-sheets">
+            <div><span class="sheet-number">01</span><b>@T["sheetSummary"]</b><small>@T["sheetSummaryHint"]</small></div>
+            <div><span class="sheet-number">02</span><b>@T["sheetCustomers"]</b><small>@T["sheetCustomersHint"]</small></div>
+            <div><span class="sheet-number">03</span><b>@T["sheetInvoices"]</b><small>@T["sheetInvoicesHint"]</small></div>
+            <div><span class="sheet-number">04</span><b>@T["sheetPayments"]</b><small>@T["sheetPaymentsHint"]</small></div>
+            <div><span class="sheet-number">05</span><b>@T["sheetUsage"]</b><small>@T["sheetUsageHint"]</small></div>
+            <div><span class="sheet-number">06</span><b>@T["sheetArchive"]</b><small>@T["sheetArchiveHint"]</small></div>
+        </div>
+        <div class="report-export-footer"><span><AppIcon Name="shield" Size="15" /> @T["reportExportHint"]</span></div>
+    </section>
+}
+
+<div class="report-preview-backdrop @(PreviewOpen ? "is-open" : "is-closed")" aria-hidden="@(!PreviewOpen)" @onclick="ClosePreview">
+    <section class="report-preview-modal" role="dialog" aria-modal="true" aria-labelledby="report-preview-title" @onclick:stopPropagation="true">
+        <div class="report-preview-actions"><button type="button" class="modal-close" aria-label="@T["close"]" @onclick="ClosePreview"><AppIcon Name="close" Size="18" /></button><button type="button" class="btn-outline" @onclick="PrintReport"><AppIcon Name="print" Size="16" />@T["printReport"]</button><button type="button" class="btn-main" @onclick="Download"><AppIcon Name="spreadsheet" Size="16" />@T["downloadExcel"]</button></div>
+        <article class="official-report" id="report-print-sheet">
+            <header class="official-report-header"><div><span class="official-report-brand">@T["brand"]</span><h2 id="report-preview-title">@T["reportsTitle"]</h2></div><div class="official-report-meta"><span>@T["reportPeriod"]</span><b>@PeriodLabel</b><small>@T["reportGeneratedAt"]: @DateTime.Now.ToString("dd/MM/yyyy HH:mm", CultureInfo.CurrentCulture)</small></div></header>
+            <section class="official-report-section"><h3>01 · @T["sheetCustomers"]</h3><table class="official-report-table"><thead><tr><th>@T["code"]</th><th>@T["name"]</th><th>@T["meterNumber"]</th><th>@T["subscriptionYear"]</th><th>@T["phone"]</th><th>@T["location"]</th><th>@T["accountState"]</th></tr></thead><tbody>
+                @foreach (var customer in Customers)
+                {
+                    <tr><td>@customer.Code</td><td>@customer.Name</td><td>@(customer.MeterNumber ?? "—")</td><td>@(customer.SubscriptionYear?.ToString() ?? "—")</td><td>@(customer.Phone ?? "—")</td><td>@(customer.Location ?? "—")</td><td>@(customer.IsActive ? T["active"] : T["inactive"])</td></tr>
+                }
+                @if (Customers.Count == 0) { <tr><td colspan="7">@T["noData"]</td></tr> }
+            </tbody><tfoot><tr><th colspan="7">@T["customerCount"]: @Customers.Count.ToString("N0") · @T["active"]: @CustomerCount.ToString("N0")</th></tr></tfoot></table></section>
+            <section class="official-report-section"><h3>02 · @T["sheetInvoices"]</h3><table class="official-report-table"><thead><tr><th>@T["invoiceNo"]</th><th>@T["customer"]</th><th>@T["description"]</th><th>@T["issueDate"]</th><th>@T["dueDate"]</th><th>@T["amount"]</th><th>@T["paidAmount"]</th><th>@T["remaining"]</th><th>@T["status"]</th></tr></thead><tbody>
+                @foreach (var invoice in PeriodInvoices)
+                {
+                    var paid = invoice.Payments.Sum(payment => payment.Amount);
+                    <tr><td>@invoice.Number</td><td>@invoice.Customer.Name</td><td>@invoice.Description</td><td>@DateLabel(invoice.IssuedOn)</td><td>@DateLabel(invoice.DueOn)</td><td>@Money(invoice.Amount, invoice.CurrencyCode)</td><td>@Money(paid, invoice.CurrencyCode)</td><td>@Money(Math.Max(0, invoice.Amount - paid), invoice.CurrencyCode)</td><td>@InvoiceState(invoice, paid)</td></tr>
+                }
+                @if (!PeriodInvoices.Any()) { <tr><td colspan="9">@T["noData"]</td></tr> }
+            </tbody><tfoot>@foreach (var group in PeriodInvoices.GroupBy(invoice => invoice.CurrencyCode, StringComparer.OrdinalIgnoreCase)) { var total = group.Sum(invoice => invoice.Amount); var paid = group.Sum(invoice => invoice.Payments.Sum(payment => payment.Amount)); <tr><th colspan="5">@T["amount"] (@group.Key) · @T["invoices"]: @group.Count().ToString("N0")</th><td>@Money(total, group.Key)</td><td>@Money(paid, group.Key)</td><td>@Money(Math.Max(0, total - paid), group.Key)</td><td></td></tr> }</tfoot></table></section>
+            <section class="official-report-section"><h3>03 · @T["sheetPayments"]</h3><table class="official-report-table"><thead><tr><th>@T["paymentDate"]</th><th>@T["invoiceNo"]</th><th>@T["customer"]</th><th>@T["amount"]</th><th>@T["currency"]</th><th>@T["reference"]</th><th>@T["recordedBy"]</th></tr></thead><tbody>
+                @foreach (var payment in PeriodPayments.OrderBy(payment => payment.PaidOn))
+                {
+                    <tr><td>@DateLabel(payment.PaidOn)</td><td>@payment.Invoice.Number</td><td>@payment.Invoice.Customer.Name</td><td>@Money(payment.Amount, payment.Invoice.CurrencyCode)</td><td>@payment.Invoice.CurrencyCode</td><td>@(payment.Reference ?? "—")</td><td>@payment.RecordedBy</td></tr>
+                }
+                @if (!PeriodPayments.Any()) { <tr><td colspan="7">@T["noData"]</td></tr> }
+            </tbody><tfoot>@foreach (var group in PeriodPayments.GroupBy(payment => payment.Invoice.CurrencyCode, StringComparer.OrdinalIgnoreCase)) { <tr><th colspan="3">@T["amount"] (@group.Key) · @group.Count().ToString("N0")</th><td>@Money(group.Sum(payment => payment.Amount), group.Key)</td><td>@group.Key</td><td colspan="2"></td></tr> }</tfoot></table></section>
+            <section class="official-report-section"><h3>04 · @T["sheetUsage"]</h3><table class="official-report-table"><thead><tr><th>@T["customer"]</th><th>@T["period"]</th><th>@T["previousReadingDate"]</th><th>@T["previousReading"] m³</th><th>@T["currentReadingDate"]</th><th>@T["currentReading"] m³</th><th>@T["consumption"] m³</th><th>@T["rate"]</th><th>@T["charge"]</th></tr></thead><tbody>
+                @foreach (var reading in PeriodReadings)
+                {
+                    <tr><td>@reading.Customer.Name</td><td>@reading.Period.ToString("yyyy-MM", CultureInfo.InvariantCulture)</td><td>@DateLabel(reading.PreviousReadOn)</td><td>@reading.PreviousReading.ToString("N3", CultureInfo.CurrentCulture)</td><td>@DateLabel(reading.CurrentReadOn)</td><td>@reading.CurrentReading.ToString("N3", CultureInfo.CurrentCulture)</td><td>@reading.Consumption.ToString("N3", CultureInfo.CurrentCulture)</td><td>@Money(reading.Rate, "DZD")</td><td>@Money(reading.Charge, "DZD")</td></tr>
+                }
+                @if (!PeriodReadings.Any()) { <tr><td colspan="9">@T["noData"]</td></tr> }
+            </tbody><tfoot><tr><th colspan="6">@T["grandTotal"]</th><td>@PeriodReadings.Sum(reading => reading.Consumption).ToString("N3", CultureInfo.CurrentCulture) m³</td><td></td><td>@Money(PeriodReadings.Sum(reading => reading.Charge), "DZD")</td></tr></tfoot></table></section>
+            <section class="official-report-section"><h3>05 · @T["sheetArchive"]</h3><table class="official-report-table"><thead><tr><th>@T["period"]</th><th>@T["currency"]</th><th>@T["invoices"]</th><th>@T["amount"]</th><th>@T["collected"]</th><th>@T["remaining"]</th></tr></thead><tbody>
+                @foreach (var group in Invoices.GroupBy(invoice => new { Month = invoice.IssuedOn.ToString("yyyy-MM", CultureInfo.InvariantCulture), invoice.CurrencyCode }).OrderBy(group => group.Key.Month).ThenBy(group => group.Key.CurrencyCode))
+                {
+                    var total = group.Sum(invoice => invoice.Amount);
+                    var paid = group.Sum(invoice => invoice.Payments.Sum(payment => payment.Amount));
+                    <tr><td>@group.Key.Month</td><td>@group.Key.CurrencyCode</td><td>@group.Count().ToString("N0")</td><td>@Money(total, group.Key.CurrencyCode)</td><td>@Money(paid, group.Key.CurrencyCode)</td><td>@Money(Math.Max(0, total - paid), group.Key.CurrencyCode)</td></tr>
+                }
+                @if (!Invoices.Any()) { <tr><td colspan="6">@T["noData"]</td></tr> }
+            </tbody><tfoot>@foreach (var group in Invoices.GroupBy(invoice => invoice.CurrencyCode, StringComparer.OrdinalIgnoreCase)) { var total = group.Sum(invoice => invoice.Amount); var paid = group.Sum(invoice => invoice.Payments.Sum(payment => payment.Amount)); <tr><th colspan="2">@T["grandTotal"] (@group.Key)</th><td>@group.Count().ToString("N0")</td><td>@Money(total, group.Key)</td><td>@Money(paid, group.Key)</td><td>@Money(Math.Max(0, total - paid), group.Key)</td></tr> }</tfoot></table></section>
+            <section class="official-report-section"><h3>06 · @T["sheetSummary"]</h3><table class="official-report-table"><thead><tr><th>@T["indicator"]</th><th>@T["value"]</th></tr></thead><tbody>
+                <tr><td>@T["customersTotal"] (@T["active"])</td><td>@CustomerCount.ToString("N0")</td></tr>
+                <tr><td>@T["invoices"]</td><td>@InvoiceCount.ToString("N0") · @Money(Invoiced, "DZD")</td></tr>
+                <tr><td>@T["collected"]</td><td>@Money(Collected, "DZD")</td></tr>
+                <tr><td>@T["outstanding"]</td><td>@Money(Outstanding, "DZD")</td></tr>
+                <tr><td>@T["usage"]</td><td>@Usage.ToString("N2") m³</td></tr>
+            </tbody></table></section>
+            <footer class="official-report-footer"><span>@T["brand"]</span><span>@T["reportGeneratedAt"] · @DateTime.Now.ToString("dd/MM/yyyy", CultureInfo.CurrentCulture)</span></footer>
+        </article>
+    </section>
+</div>
+
+@code {
+    private List<Customer> Customers = [];
+    private List<Invoice> Invoices = [];
+    private List<MeterReading> Readings = [];
+    private List<string> Periods = [];
+    private IReadOnlyList<SelectOption> ReportPeriodOptions => [new("", T["allPeriods"]), .. Periods.Select(period => new SelectOption(period, FormatPeriod(period)))];
+    private string SelectedPeriod = "";
+    private string? PrintMessage;
+    private bool Loading = true;
+    private bool PreviewOpen;
+    private int CustomerCount => Customers.Count(customer => customer.IsActive);
+    private IEnumerable<Invoice> PeriodInvoices => string.IsNullOrEmpty(SelectedPeriod)
+        ? Invoices
+        : Invoices.Where(invoice => invoice.IssuedOn.ToString("yyyy-MM", CultureInfo.InvariantCulture) == SelectedPeriod);
+    private IEnumerable<MeterReading> PeriodReadings => string.IsNullOrEmpty(SelectedPeriod)
+        ? Readings
+        : Readings.Where(reading => reading.Period.ToString("yyyy-MM", CultureInfo.InvariantCulture) == SelectedPeriod);
+    private IEnumerable<Payment> PeriodPayments => Invoices.SelectMany(invoice => invoice.Payments)
+        .Where(payment => string.IsNullOrEmpty(SelectedPeriod) || payment.PaidOn.ToString("yyyy-MM", CultureInfo.InvariantCulture) == SelectedPeriod);
+    private int InvoiceCount => PeriodInvoices.Count();
+    private decimal Invoiced => PeriodInvoices.Where(invoice => invoice.CurrencyCode == "DZD").Sum(invoice => invoice.Amount);
+    private decimal Collected => PeriodPayments.Where(payment => payment.Invoice.CurrencyCode == "DZD").Sum(payment => payment.Amount);
+    private decimal Outstanding => PeriodInvoices.Where(invoice => invoice.CurrencyCode == "DZD").Sum(invoice => Math.Max(0, invoice.Amount - invoice.Payments.Sum(payment => payment.Amount)));
+    private decimal Usage => PeriodReadings.Sum(reading => reading.Consumption);
+    private string PeriodLabel => string.IsNullOrEmpty(SelectedPeriod) ? T["allPeriods"] : FormatPeriod(SelectedPeriod);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        Customers = await db.Customers.AsNoTracking().OrderBy(customer => customer.Name).ToListAsync();
+        Invoices = await db.Invoices.AsNoTracking().Include(invoice => invoice.Customer).Include(invoice => invoice.Payments).OrderByDescending(invoice => invoice.IssuedOn).ToListAsync();
+        Readings = await db.MeterReadings.AsNoTracking().Include(reading => reading.Customer).OrderByDescending(reading => reading.Period).ToListAsync();
+        Periods = Invoices.Select(invoice => invoice.IssuedOn.ToString("yyyy-MM", CultureInfo.InvariantCulture))
+            .Concat(Readings.Select(reading => reading.Period.ToString("yyyy-MM", CultureInfo.InvariantCulture)))
+            .Concat(Invoices.SelectMany(invoice => invoice.Payments).Select(payment => payment.PaidOn.ToString("yyyy-MM", CultureInfo.InvariantCulture)))
+            .Distinct().OrderByDescending(period => period).ToList();
+        var current = DateTime.Today.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+        SelectedPeriod = Periods.Contains(current) ? current : Periods.FirstOrDefault() ?? "";
+        Loading = false;
+    }
+
+    private string FormatPeriod(string value) => DateOnly.TryParseExact(value + "-01", "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
+        ? date.ToString("MMMM yyyy", CultureInfo.CurrentCulture)
+        : value;
+    private string Money(decimal value, string currency) => $"{value:N2} {(currency == "DZD" ? T["currency"] : currency)}";
+    private string DateLabel(DateOnly value) => value.ToString("d", CultureInfo.CurrentCulture);
+    private string InvoiceState(Invoice invoice, decimal paid) => invoice.Amount > 0 && paid >= invoice.Amount ? T["paid"] : paid > 0 ? T["partial"] : T["open"];
+    private void OpenPreview() { PrintMessage = null; PreviewOpen = true; }
+    private void ClosePreview() => PreviewOpen = false;
+    private void Download() => Navigation.NavigateTo($"/reports/export.xlsx?period={Uri.EscapeDataString(SelectedPeriod)}", forceLoad: true);
+    private async Task PrintReport()
+    {
+        PrintMessage = null;
+        var opened = await JS.InvokeAsync<bool>("agirePrintElement", "report-print-sheet", $"{T["reportsTitle"]} - {PeriodLabel}");
+        if (!opened) PrintMessage = T["printPopupBlocked"];
+    }
+}

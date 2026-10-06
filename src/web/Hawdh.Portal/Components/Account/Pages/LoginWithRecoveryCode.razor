@@ -1,0 +1,91 @@
+@page "/Account/LoginWithRecoveryCode"
+@attribute [AllowAnonymous]
+
+@using System.ComponentModel.DataAnnotations
+@using Hawdh.Portal.Localization
+@using Microsoft.AspNetCore.Identity
+@using Hawdh.Portal.Data
+@inject UiText T
+
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+@inject IdentityRedirectManager RedirectManager
+@inject ILogger<LoginWithRecoveryCode> Logger
+
+<PageTitle>@T["recoveryCodeTitle"] — @T["brand"]</PageTitle>
+
+<div class="auth-screen auth-screen-standalone">
+    <main class="auth-card">
+        <div class="auth-heading-icon"><AppIcon Name="key" Size="20" /></div>
+        <h1 class="auth-title">@T["recoveryCodeTitle"]</h1>
+        <p class="auth-subtitle">@T["recoveryLoginHint"]</p>
+        @if (message is not null)
+        {
+            <div class="alert-error" role="alert">@message</div>
+        }
+        <EditForm class="auth-form" Model="Input" FormName="login-with-recovery-code" OnValidSubmit="OnValidSubmitAsync" method="post">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+            <div class="mb-3">
+                <label class="form-label" for="Input.RecoveryCode">@T["recoveryCode"]</label>
+                <div class="auth-input-wrap"><AppIcon Name="key" Size="17" /><InputText @bind-Value="Input.RecoveryCode" id="Input.RecoveryCode" class="form-control" autocomplete="off" placeholder="@T["recoveryCodePlaceholder"]" dir="ltr" />
+                </div>
+                <ValidationMessage For="() => Input.RecoveryCode" class="text-danger" />
+            </div>
+            <button type="submit" class="btn-main w-100 auth-submit">@T["loginButton"] <AppIcon Name="arrow" Size="17" /></button>
+        </EditForm>
+    </main>
+</div>
+
+@code {
+    private string? message;
+    private ApplicationUser user = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new();
+
+        // Ensure the user has gone through the username & password screen first
+        user = await SignInManager.GetTwoFactorAuthenticationUserAsync() ??
+            throw new InvalidOperationException("Unable to load two-factor authentication user.");
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        var recoveryCode = Input.RecoveryCode.Replace(" ", string.Empty);
+
+        var result = await SignInManager.TwoFactorRecoveryCodeSignInAsync(recoveryCode);
+
+        var userId = await UserManager.GetUserIdAsync(user);
+
+        if (result.Succeeded)
+        {
+            Logger.LogInformation("User with ID '{UserId}' logged in with a recovery code.", userId);
+            RedirectManager.RedirectTo(ReturnUrl);
+        }
+        else if (result.IsLockedOut)
+        {
+            Logger.LogWarning("User account locked out.");
+            RedirectManager.RedirectTo("Account/Lockout");
+        }
+        else
+        {
+            Logger.LogWarning("Invalid recovery code entered for user with ID '{UserId}' ", userId);
+            message = T["invalidRecoveryCode"];
+        }
+    }
+
+    private sealed class InputModel
+    {
+        [LocalizedRequired]
+        [DataType(DataType.Text)]
+        public string RecoveryCode { get; set; } = "";
+    }
+}
+

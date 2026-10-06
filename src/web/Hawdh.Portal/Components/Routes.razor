@@ -1,0 +1,29 @@
+@using Hawdh.Portal.Components.Account.Shared
+@inject Hawdh.Portal.Localization.UiText T
+@inject IWebHostEnvironment Environment
+<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized Context="authenticationState">
+                @if (authenticationState.User.Identity?.IsAuthenticated == true
+                    && authenticationState.User.IsInRole("Administrator")
+                    && !Environment.IsEnvironment("Local")
+                    && !authenticationState.User.HasClaim("hawdh:mfa", "true"))
+                {
+                    <section class="account-security-page">
+                        <header class="account-security-heading">
+                            <span class="account-security-icon"><AppIcon Name="shield" Size="19" /></span>
+                            <div><h2>@T["adminTwoFactorRequired"]</h2><p>@T["twoFactorSetupHint"]</p></div>
+                        </header>
+                        <a class="btn-main" href="/Account/Manage/TwoFactorAuthentication">@T["configureTwoFactor"]</a>
+                    </section>
+                }
+                else
+                {
+                    <RedirectToLogin />
+                }
+            </NotAuthorized>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector=".page-title" />
+    </Found>
+</Router>

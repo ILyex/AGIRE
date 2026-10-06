@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>agire.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="agire.ico" />
+    <EmbeddedResource Include="Assets\mail.png" LogicalName="Hawdh.Launcher.Assets.mail.png" />
+    <EmbeddedResource Include="Assets\password.png" LogicalName="Hawdh.Launcher.Assets.password.png" />
+    <EmbeddedResource Include="Assets\global.png" LogicalName="Hawdh.Launcher.Assets.global.png" />
+    <EmbeddedResource Include="Assets\night-mode.png" LogicalName="Hawdh.Launcher.Assets.night-mode.png" />
+    <EmbeddedResource Include="Assets\view.png" LogicalName="Hawdh.Launcher.Assets.view.png" />
+    <EmbeddedResource Include="Assets\w.png" LogicalName="Hawdh.Launcher.Assets.w.png" />
+    <EmbeddedResource Include="Assets\IBMPlexSansArabic-Regular.ttf" LogicalName="Hawdh.Launcher.Assets.IBMPlexSansArabic-Regular.ttf" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,146 @@
+@page "/invoices"
+@page "/invoices/new"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Administrator,Billing,ReadOnly", Policy = "AdminMfa")]
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject UiText T
+
+<PageTitle>@T["invoices"] — @T["brand"]</PageTitle>
+<div class="page-heading"><div><h1 class="page-title">@T["invoiceRegister"]</h1><p class="page-description">@T["invoiceHint"]</p></div><AuthorizeView Roles="Administrator,Billing"><Authorized><a class="btn-main" href="/invoices/new" data-enhance-nav="false"><AppIcon Name="plus" Size="16" />@T["newInvoice"]</a></Authorized></AuthorizeView></div>
+<section class="panel table-panel"><div class="table-toolbar"><div><h2 class="panel-title">@T["invoices"]</h2><span class="table-count">@Filtered.Count / @Rows.Count</span></div><div class="table-toolbar-actions"><input class="search-box" placeholder="⌕  @T["invoiceNo"] / @T["customer"]" @bind="Query" @bind:event="oninput" /><SelectMenu TValue="string" Label="@T["archiveMonth"]" Options="MonthOptions" @bind-Value="MonthFilter" /><SelectMenu TValue="string" Label="@T["allStatuses"]" Options="InvoiceStatusOptions" @bind-Value="Filter" /></div></div>
+@if (ArchiveRows.Count > 0)
+{
+    <div class="archive-summary" aria-label="@T["archiveMonth"]">
+        <div class="archive-summary-title"><span class="archive-summary-icon">◷</span><div><b>@(MonthFilter == "" ? T["allMonths"] : FormatMonth(MonthFilter))</b><small>@T["archiveMonth"]</small></div></div>
+        @foreach (var group in ArchiveRows.GroupBy(r => r.Invoice.CurrencyCode).OrderBy(g => g.Key))
+        {
+            var issued = group.Sum(r => r.Invoice.Amount); var paid = group.Sum(r => r.Paid);
+            <div class="archive-metric"><small>@T["monthInvoiceCount"]</small><b>@group.Count()</b></div>
+            <div class="archive-metric"><small>@T["monthInvoiced"] (@Currency(group.Key))</small><b>@Money(issued, group.Key)</b></div>
+            <div class="archive-metric"><small>@T["monthPaid"]</small><b>@Money(paid, group.Key)</b></div>
+            <div class="archive-metric"><small>@T["monthRemaining"]</small><b>@Money(Math.Max(0, issued-paid), group.Key)</b></div>
+        }
+    </div>
+}
+@if (Filtered.Count == 0) { <div class="empty-state"><div class="empty-icon"><AppIcon Name="invoices" Size="21" /></div><b>@T["noInvoices"]</b><span>@T["noInvoicesHint"]</span></div> }
+else { <div class="table-scroll"><table><thead><tr><th>@T["invoiceNo"]</th><th>@T["customer"]</th><th>@T["issueDate"]</th><th>@T["dueDate"]</th><th>@T["amount"]</th><th>@T["paidAmount"]</th><th>@T["remaining"]</th><th>@T["status"]</th><th>@T["actions"]</th></tr></thead><tbody>
+@foreach (var row in Filtered) { var remaining = Math.Max(0, row.Invoice.Amount-row.Paid); <tr><td><b>@row.Invoice.Number</b><div class="secondary-text">@row.Invoice.Description</div></td><td>@row.Invoice.Customer.Name</td><td>@row.Invoice.IssuedOn.ToString("d", CultureInfo.CurrentCulture)</td><td>@row.Invoice.DueOn.ToString("d", CultureInfo.CurrentCulture)</td><td class="money">@Money(row.Invoice.Amount, row.Invoice.CurrencyCode)</td><td class="money">@Money(row.Paid, row.Invoice.CurrencyCode)</td><td class="money">@Money(remaining, row.Invoice.CurrencyCode)</td><td>@((MarkupString)Status(row.Invoice, row.Paid))</td><td><AuthorizeView Roles="Administrator,Billing"><Authorized>@if (remaining > 0) { <button class="small-icon-btn" @onclick="() => StartPayment(row)">@T["recordPayment"]</button> }</Authorized></AuthorizeView></td></tr> }
+</tbody></table></div> }</section>
+@if (!string.IsNullOrEmpty(Toast)) { <div class="toast-host" role="status">@Toast</div> }
+@if (ModalOpen)
+{
+<div class="modal-backdrop" @onclick="Close"><section class="modal-card" role="dialog" aria-modal="true" @onclick:stopPropagation="true"><div class="modal-heading"><h2>@(Paying is null ? T["newInvoice"] : T["recordPayment"])</h2><button type="button" class="modal-close" aria-label="@T["close"]" @onclick="Close"><AppIcon Name="close" Size="18" /></button></div>
+@if (Paying is null)
+{
+    <EditForm Model="NewForm" OnValidSubmit="SaveInvoice"><DataAnnotationsValidator /><ValidationSummary class="validation-errors"/><div class="form-grid">
+        <div class="field full"><label>@T["customer"] *</label><SelectMenu TValue="Guid?" Label="@T["customer"]" Placeholder="—" Options="InvoiceCustomerOptions" @bind-Value="NewForm.CustomerId" /><ValidationMessage For="() => NewForm.CustomerId" class="validation-message"/></div>
+        <div class="field"><label>@T["invoiceNo"]</label><InputText class="form-control" @bind-Value="NewForm.Number" maxlength="40"/></div>
+        <div class="field"><label>@T["description"] *</label><InputText class="form-control" @bind-Value="NewForm.Description" maxlength="400"/></div>
+        <div class="field"><label>@T["amount"] *</label><InputNumber class="form-control" @bind-Value="NewForm.Amount" min="0.01" step="0.01"/></div>
+        <div class="field"><label>@T["issueDate"] *</label><DatePicker @bind-Value="NewForm.IssuedOn" Label="@T["issueDate"]" /></div>
+        <div class="field"><label>@T["dueDate"] *</label><DatePicker @bind-Value="NewForm.DueOn" Label="@T["dueDate"]" /></div>
+    </div><div class="modal-footer"><button class="btn-main" type="submit">@T["save"]</button><button class="btn-outline" type="button" @onclick="Close">@T["cancel"]</button></div></EditForm>
+}
+else
+{
+    <div class="invoice-summary"><span>@Paying.Invoice.Number · @Paying.Invoice.Customer.Name</span><b>@Money(Paying.Invoice.Amount-Paying.Paid) @T["remaining"]</b></div>
+    <EditForm Model="PaymentForm" OnValidSubmit="SavePayment"><DataAnnotationsValidator/><ValidationSummary class="validation-errors"/><div class="form-grid"><div class="field"><label>@T["paymentAmount"] *</label><InputNumber class="form-control" @bind-Value="PaymentForm.Amount" min="0.01" step="0.01"/></div><div class="field"><label>@T["paymentDate"] *</label><DatePicker @bind-Value="PaymentForm.PaidOn" Label="@T["paymentDate"]" /></div><div class="field full"><label>Référence / Reference</label><InputText class="form-control" @bind-Value="PaymentForm.Reference" maxlength="80"/></div></div><div class="modal-footer"><button class="btn-main" type="submit">@T["recordPayment"]</button><button class="btn-outline" type="button" @onclick="Close">@T["cancel"]</button></div></EditForm>
+}
+</section></div>
+}
+
+@code {
+    private List<InvoiceRow> Rows = [];
+    private List<Customer> CustomerOptions = [];
+    private IEnumerable<string> Periods => Rows.Select(r => r.Invoice.IssuedOn.ToString("yyyy-MM", CultureInfo.InvariantCulture)).Distinct().OrderByDescending(p => p);
+    private IReadOnlyList<SelectOption> MonthOptions => [new("", T["allMonths"]), .. Periods.Select(month => new SelectOption(month, FormatMonth(month)))];
+    private IReadOnlyList<SelectOption> InvoiceStatusOptions => [new("all", T["allStatuses"]), new("open", T["open"]), new("paid", T["settled"])];
+    private IReadOnlyList<SelectOption> InvoiceCustomerOptions => [new("", "—"), .. CustomerOptions.Select(customer => new SelectOption(customer.Id.ToString("D"), $"{customer.Code} · {customer.Name}"))];
+    private List<InvoiceRow> ArchiveRows => Rows.Where(r => MonthFilter == "" || r.Invoice.IssuedOn.ToString("yyyy-MM", CultureInfo.InvariantCulture) == MonthFilter).ToList();
+    private List<InvoiceRow> Filtered => ArchiveRows.Where(r => (Filter == "all" || Filter == "open" && (r.Invoice.Amount <= 0 || r.Invoice.Amount > r.Paid) || Filter == "paid" && r.Invoice.Amount > 0 && r.Invoice.Amount <= r.Paid) && (string.IsNullOrWhiteSpace(Query) || $"{r.Invoice.Number} {r.Invoice.Customer.Name} {r.Invoice.Description}".Contains(Query.Trim(), StringComparison.CurrentCultureIgnoreCase))).ToList();
+    private string Query = "", Filter = "all", MonthFilter = "", Toast = "";
+    private bool ModalOpen;
+    private InvoiceRow? Paying;
+    private InvoiceForm NewForm = new();
+    private PaymentFormModel PaymentForm = new();
+    private string Currency(string code) => code == "DZD" ? T["currency"] : code;
+    private string Money(decimal amount, string code = "DZD") => $"{amount:N2} {Currency(code)}";
+    private static string FormatMonth(string month) => DateTime.ParseExact(month, "yyyy-MM", CultureInfo.InvariantCulture).ToString("Y", CultureInfo.CurrentCulture);
+    protected override async Task OnInitializedAsync()
+    {
+        await Reload();
+        if (Navigation.Uri.EndsWith("/invoices/new", StringComparison.OrdinalIgnoreCase) && await CanBill()) await NewInvoice();
+    }
+    private async Task Reload()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var invoices = await db.Invoices.Include(i => i.Customer).Include(i => i.Payments).OrderByDescending(i => i.IssuedOn).ToListAsync();
+        Rows = invoices.Select(i => new InvoiceRow(i, i.Payments.Sum(p => p.Amount))).ToList();
+        CustomerOptions = await db.Customers.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync();
+    }
+    private async Task NewInvoice()
+    {
+        if (CustomerOptions.Count == 0) await Reload();
+        NewForm = new InvoiceForm { Number = $"INV-{DateTime.Today:yyyy}-{Guid.NewGuid().ToString("N")[..12].ToUpperInvariant()}", IssuedOn = DateOnly.FromDateTime(DateTime.Today), DueOn = DateOnly.FromDateTime(DateTime.Today.AddDays(30)) };
+        Paying = null; ModalOpen = true;
+    }
+    private void StartPayment(InvoiceRow row) { Paying = row; PaymentForm = new() { Amount = row.Invoice.Amount - row.Paid, PaidOn = DateOnly.FromDateTime(DateTime.Today) }; ModalOpen = true; }
+    private void Close()
+    {
+        ModalOpen = false;
+        if (Navigation.Uri.TrimEnd('/').EndsWith("/invoices/new", StringComparison.OrdinalIgnoreCase))
+            Navigation.NavigateTo("/invoices", replace: true);
+    }
+    private async Task SaveInvoice()
+    {
+        if (!await CanBill()) { Toast = T["noAccess"]; return; }
+        await using var db = await DbFactory.CreateDbContextAsync();
+        await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        var customer = NewForm.CustomerId is null ? null : await db.Customers.SingleOrDefaultAsync(c => c.Id == NewForm.CustomerId && c.IsActive);
+        var amount = decimal.Round(NewForm.Amount, 2, MidpointRounding.AwayFromZero);
+        var number = NewForm.Number.Trim().ToUpperInvariant();
+        var description = NewForm.Description.Trim();
+        if (customer is null) { Toast = T["selectCustomer"]; return; }
+        if (amount <= 0 || NewForm.Amount != amount || string.IsNullOrWhiteSpace(number) || string.IsNullOrWhiteSpace(description)) { Toast = T["completeInvoiceFields"]; return; }
+        if (NewForm.IssuedOn > DateOnly.FromDateTime(DateTime.Today) || NewForm.DueOn < NewForm.IssuedOn) { Toast = T["invalidInvoiceDate"]; return; }
+        if (await db.Invoices.AnyAsync(i => i.Number.ToUpper() == number)) { Toast = T["invoiceExists"]; return; }
+        var actor = (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User.Identity?.Name ?? "";
+        var invoice = new Invoice { Number = number, CustomerId = customer.Id, Description = description, Amount = amount, IssuedOn = NewForm.IssuedOn, DueOn = NewForm.DueOn, CreatedBy = actor };
+        db.Invoices.Add(invoice); db.AuditEntries.Add(new AuditEntry { Actor = actor, Action = "InvoiceCreated", EntityType = "Invoice", EntityId = invoice.Id.ToString(), Details = invoice.Number });
+        try
+        {
+            await db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            ModalOpen = false;
+            Toast = T["invoiceCreated"];
+            await Reload();
+        }
+        catch (DbUpdateException)
+        {
+            Toast = T["invoiceSaveFailed"];
+        }
+    }
+    private async Task SavePayment()
+    {
+        if (!await CanBill() || Paying is null) { Toast = T["noAccess"]; return; }
+        await using var db = await DbFactory.CreateDbContextAsync();
+        await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        var invoice = await db.Invoices.Include(i => i.Payments).SingleAsync(i => i.Id == Paying.Invoice.Id);
+        var remaining = invoice.Amount - invoice.Payments.Sum(p => p.Amount);
+        var amount = decimal.Round(PaymentForm.Amount, 2, MidpointRounding.AwayFromZero);
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        if (amount <= 0 || PaymentForm.Amount != amount || amount > remaining) { Toast = T["paymentTooLarge"]; return; }
+        if (PaymentForm.PaidOn < invoice.IssuedOn || PaymentForm.PaidOn > today) { Toast = T["invalidPaymentDate"]; return; }
+        var actor = (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User.Identity?.Name ?? "";
+        var payment = new Payment { InvoiceId = invoice.Id, Amount = amount, PaidOn = PaymentForm.PaidOn, Reference = PaymentForm.Reference?.Trim(), RecordedBy = actor };
+        db.Payments.Add(payment); db.AuditEntries.Add(new AuditEntry { Actor = actor, Action = "PaymentRecorded", EntityType = "Invoice", EntityId = invoice.Id.ToString(), Details = $"{payment.Amount:N2} {payment.PaidOn:yyyy-MM-dd}" });
+        await db.SaveChangesAsync(); await transaction.CommitAsync(); ModalOpen = false; Toast = T["paymentAdded"]; await Reload();
+    }
+    private async Task<bool> CanBill() { var user = (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User; return user.IsInRole("Administrator") || user.IsInRole("Billing"); }
+    private string Status(Invoice invoice, decimal paid) => invoice.Amount > 0 && invoice.Amount <= paid ? $"<span class=\"status-pill\">● {T["paid"]}</span>" : paid > 0 ? $"<span class=\"status-pill partial\">● {T["partial"]}</span>" : invoice.DueOn < DateOnly.FromDateTime(DateTime.Today) ? $"<span class=\"status-pill overdue\">● {T["overdue"]}</span>" : $"<span class=\"status-pill due\">● {T["open"]}</span>";
+    private sealed record InvoiceRow(Invoice Invoice, decimal Paid);
+    private sealed class InvoiceForm { [Required] public Guid? CustomerId { get; set; } [Required, StringLength(40)] public string Number { get; set; } = ""; [Required, StringLength(400, MinimumLength=2)] public string Description { get; set; } = ""; [Range(typeof(decimal), "0.01", "999999999999")] public decimal Amount { get; set; } [Required] public DateOnly IssuedOn { get; set; } [Required] public DateOnly DueOn { get; set; } }
+    private sealed class PaymentFormModel { [Range(typeof(decimal), "0.01", "999999999999")] public decimal Amount { get; set; } [Required] public DateOnly PaidOn { get; set; } [StringLength(80)] public string? Reference { get; set; } }
+}
