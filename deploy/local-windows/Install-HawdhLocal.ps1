@@ -24,6 +24,7 @@ function Read-InstallerCredentials {
     $form.StartPosition = 'CenterScreen'; $form.RightToLeft = 'Yes'; $form.RightToLeftLayout = $true
     $form.FormBorderStyle = 'FixedDialog'; $form.MaximizeBox = $false; $form.MinimizeBox = $false
     $logoPath = Join-Path $packageDirectory 'agire-installer.png'
+    if (-not (Test-Path $logoPath)) { $logoPath = Join-Path $packagePayload 'agire-installer.png' }
     if (Test-Path $logoPath) {
         $logo = New-Object System.Windows.Forms.PictureBox
         $logo.Image = [System.Drawing.Image]::FromFile($logoPath); $logo.SizeMode = 'Zoom'; $logo.Width = 52; $logo.Height = 52; $logo.Location = New-Object System.Drawing.Point(365, 10)
@@ -83,11 +84,13 @@ if (-not (Test-Administrator)) {
     exit 0
 }
 
-$packageDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
+$scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
+$packageDirectory = if (Test-Path (Join-Path $scriptDirectory '..\payload')) { (Resolve-Path (Join-Path $scriptDirectory '..')).Path } else { $scriptDirectory }
 $packagePayload = Join-Path $packageDirectory 'payload'
 $launcher = Join-Path $packageDirectory 'AGIRE.exe'
 $icon = Join-Path $packageDirectory 'agire.ico'
 if (-not (Test-Path $packagePayload)) { $packagePayload = $packageDirectory }
+if (-not (Test-Path $icon)) { $icon = Join-Path $packagePayload 'agire.ico' }
 $exe = Join-Path $packagePayload 'Hawdh.Portal.exe'
 if (-not (Test-Path $exe)) { throw "Hawdh.Portal.exe غير موجود بجانب ملف التثبيت." }
 
