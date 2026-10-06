@@ -68,7 +68,7 @@ try {
     Start-Sleep -Milliseconds 700
     try {
         Get-ChildItem -LiteralPath $payload -File | Copy-Item -Destination $InstallDirectory -Force
-        foreach ($name in @('AGIRE.exe', 'REST.exe', 'agire.ico', 'README.txt')) {
+        foreach ($name in @('README.txt')) {
             $source = Join-Path $expanded $name
             if (Test-Path $source) { Copy-Item $source (Join-Path $InstallDirectory $name) -Force }
         }

@@ -90,6 +90,7 @@ $packagePayload = Join-Path $packageDirectory 'payload'
 $launcher = Join-Path $packageDirectory 'AGIRE.exe'
 $icon = Join-Path $packageDirectory 'agire.ico'
 if (-not (Test-Path $packagePayload)) { $packagePayload = $packageDirectory }
+if (-not (Test-Path $launcher)) { $launcher = Join-Path $packagePayload 'AGIRE.exe' }
 if (-not (Test-Path $icon)) { $icon = Join-Path $packagePayload 'agire.ico' }
 $exe = Join-Path $packagePayload 'Hawdh.Portal.exe'
 if (-not (Test-Path $exe)) { throw "Hawdh.Portal.exe غير موجود بجانب ملف التثبيت." }
