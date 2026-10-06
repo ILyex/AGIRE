@@ -34,14 +34,20 @@ if (Test-Path $preservedData) {
     Copy-Item (Join-Path $preservedData '*') (Join-Path $payload 'data') -Recurse -Force
     Remove-Item $preservedData -Recurse -Force -ErrorAction SilentlyContinue
 }
-Rename-Item (Join-Path $output 'Hawdh.Launcher.exe') (Join-Path $output 'Hawdh.exe') -Force
-Copy-Item (Join-Path $output 'Hawdh.exe') (Join-Path $output 'AGIRE.exe') -Force
-Copy-Item (Join-Path $output 'Hawdh.exe') (Join-Path $output 'REST.exe') -Force
+Rename-Item (Join-Path $output 'Hawdh.Launcher.exe') (Join-Path $output 'AGIRE.exe') -Force
+Copy-Item (Join-Path $output 'AGIRE.exe') (Join-Path $output 'REST.exe') -Force
 Copy-Item (Join-Path $repoRoot 'src\tools\Hawdh.Launcher\agire.ico') (Join-Path $output 'agire.ico') -Force
 Copy-Item (Join-Path $repoRoot 'src\tools\Hawdh.Launcher\Assets\agire-installer.png') (Join-Path $output 'agire-installer.png') -Force
 Set-Content -LiteralPath (Join-Path $output 'version.txt') -Value (git -C $repoRoot rev-parse --short HEAD) -Encoding ascii
 Remove-Item (Join-Path $output 'Hawdh.Launcher.pdb') -Force -ErrorAction SilentlyContinue
 Copy-Item (Join-Path $PSScriptRoot 'README.ar.md') (Join-Path $output 'README.txt') -Force
+Copy-Item (Join-Path $PSScriptRoot 'Install-HawdhLocal.cmd') (Join-Path $output 'Install-AGIRE.cmd') -Force
+Copy-Item (Join-Path $PSScriptRoot 'InstallLauncher.vbs') (Join-Path $output 'Install-AGIRE.vbs') -Force
+Copy-Item (Join-Path $PSScriptRoot 'Install-HawdhLocal.ps1') (Join-Path $output 'Install-AGIRE.ps1') -Force
+$cmdPath = Join-Path $output 'Install-AGIRE.cmd'
+(Get-Content -Raw $cmdPath).Replace('InstallLauncher.vbs', 'Install-AGIRE.vbs') | Set-Content -LiteralPath $cmdPath -Encoding ascii
+$vbsPath = Join-Path $output 'Install-AGIRE.vbs'
+(Get-Content -Raw $vbsPath).Replace('Install-HawdhLocal.ps1', 'Install-AGIRE.ps1') | Set-Content -LiteralPath $vbsPath -Encoding ascii
 Copy-Item (Join-Path $PSScriptRoot 'Backup-HawdhLocal.ps1') (Join-Path $payload 'Backup-HawdhLocal.ps1') -Force
 Copy-Item (Join-Path $PSScriptRoot 'Start-HawdhLocal.cmd') (Join-Path $payload 'Start-HawdhLocal.cmd') -Force
 Copy-Item (Join-Path $PSScriptRoot 'Update-AGIRE.ps1') (Join-Path $output 'Update-AGIRE.ps1') -Force

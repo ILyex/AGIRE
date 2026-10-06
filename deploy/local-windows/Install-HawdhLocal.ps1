@@ -163,7 +163,7 @@ if (-not (Get-NetFirewallRule -DisplayName $firewallName -ErrorAction SilentlyCo
 }
 
 $shell = New-Object -ComObject WScript.Shell
-$shortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'منصة مهندس.lnk'))
+$shortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'AGIRE.lnk'))
 $shortcut.TargetPath = $startFile
 $shortcut.WorkingDirectory = $InstallDirectory
 $shortcut.Description = 'تشغيل منصة مهندس على هذا الكمبيوتر'
@@ -171,7 +171,7 @@ $shortcut.IconLocation = "$(Join-Path $InstallDirectory 'AGIRE.exe'),0"
 $shortcut.Save()
 
 # Start automatically for the signed-in user as a reliable fallback to the SYSTEM task.
-$startupShortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('CommonStartup')) 'منصة مهندس.lnk'))
+$startupShortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('CommonStartup')) 'AGIRE.lnk'))
 $startupShortcut.TargetPath = $startFile
 $startupShortcut.WorkingDirectory = $InstallDirectory
 $startupShortcut.Description = 'تشغيل منصة مهندس تلقائيا عند تسجيل الدخول'
@@ -187,7 +187,7 @@ $updateShortcut.IconLocation = "$(Join-Path $InstallDirectory 'AGIRE.exe'),0"
 $updateShortcut.Save()
 
 $url = if ($ip) { "http://${ip}:$Port" } else { "http://$hostname`:$Port" }
-$urlShortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'فتح منصة مهندس.lnk'))
+$urlShortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'فتح AGIRE.lnk'))
 $urlShortcut.TargetPath = $url
 $urlShortcut.Description = "فتح منصة مهندس - $url"
 $urlShortcut.Save()
