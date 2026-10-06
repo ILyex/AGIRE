@@ -1857,6 +1857,10 @@ html[data-theme="dark"] .security-notice > a.security-notice-link:hover { backgr
     inline-size: 100% !important;
     min-inline-size: 100% !important;
 }
+.auth-card { width: 100%; max-width: 470px; justify-self: end; }
+.auth-card .auth-form { display: grid !important; grid-template-columns: minmax(0,1fr); align-items: stretch; gap: 0; }
+.auth-card .auth-form .auth-input-wrap { display: block !important; position: relative; width: 100% !important; }
+.auth-card .auth-form .auth-input-wrap .form-control { display: block !important; width: 100% !important; min-width: 0 !important; }
 html[dir="rtl"] .account-form-page { margin-inline-start: auto; }
 html[data-theme="dark"] .personal-data-card { background: color-mix(in srgb,var(--canvas) 82%,var(--card)); }
 .auth-mini-brand-lockup { width: 94px; justify-items: center; }
