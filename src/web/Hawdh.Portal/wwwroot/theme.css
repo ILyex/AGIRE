@@ -1830,6 +1830,17 @@ html[data-theme="dark"] .security-notice > a.security-notice-link:hover { backgr
 .auth-card > form > .mb-3,
 .auth-card > form > .mb-2 { width: 100%; min-width: 0; }
 .auth-card > form .form-control { display: block; }
+/* Final guard for packaged builds where framework styles may set an
+   intrinsic width on form controls. */
+.auth-card > form,
+.auth-card > form > *,
+.auth-card > form .auth-input-wrap,
+.auth-card > form .auth-input-wrap .form-control {
+    display: block;
+    width: 100% !important;
+    max-width: none !important;
+}
+.auth-card > form .d-flex { display: flex !important; }
 html[dir="rtl"] .account-form-page { margin-inline-start: auto; }
 html[data-theme="dark"] .personal-data-card { background: color-mix(in srgb,var(--canvas) 82%,var(--card)); }
 .auth-mini-brand-lockup { width: 94px; justify-items: center; }
