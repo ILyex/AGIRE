@@ -35,6 +35,7 @@ if (Test-Path $preservedData) {
     Remove-Item $preservedData -Recurse -Force -ErrorAction SilentlyContinue
 }
 Rename-Item (Join-Path $output 'Hawdh.Launcher.exe') (Join-Path $output 'Hawdh.exe') -Force
+Copy-Item (Join-Path $output 'Hawdh.exe') (Join-Path $output 'AGIRE.exe') -Force
 Copy-Item (Join-Path $output 'Hawdh.exe') (Join-Path $output 'REST.exe') -Force
 Remove-Item (Join-Path $output 'Hawdh.Launcher.pdb') -Force -ErrorAction SilentlyContinue
 Copy-Item (Join-Path $PSScriptRoot 'README.ar.md') (Join-Path $output 'README.txt') -Force

@@ -263,7 +263,7 @@ internal sealed class LauncherForm : Form
     public LauncherForm()
     {
         LoadPlatformFont();
-        Text = "منصة مهندس";
+        Text = "AGIRE";
         AutoScaleMode = AutoScaleMode.None;
         AutoScaleDimensions = new SizeF(96, 96);
         RightToLeft = RightToLeft.No;
@@ -802,7 +802,7 @@ internal sealed class LauncherForm : Form
             server = null;
             isStarting = false;
             status.Text = french ? "Impossible de démarrer la plateforme" : "تعذر تشغيل المنصة";
-            MessageBox.Show(ex.Message, french ? "Hawdh" : "منصة مهندس", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(ex.Message, french ? "AGIRE" : "AGIRE", MessageBoxButtons.OK, MessageBoxIcon.Error);
             startButton.Enabled = true;
         }
     }

@@ -468,7 +468,7 @@ app.MapGet("/reports/export.xlsx", async (IDbContextFactory<ApplicationDbContext
     var summary = new List<object[]>
     {
         new object[] { rtl ? "فترة التقرير" : "Période du rapport", selectedPeriod?.ToString("yyyy-MM") ?? (rtl ? "كل الفترات" : "Toutes les périodes") },
-        new object[] { rtl ? "عدد العملاء" : "Nombre de clients", customers.Count },
+        new object[] { rtl ? "عدد الزبائن" : "Nombre de clients", customers.Count },
         new object[] { rtl ? "عدد الفواتير" : "Nombre de factures", invoices.Count },
         new object[] { rtl ? "الاستهلاك (م³)" : "Consommation (m³)", totalUsage }
     };
@@ -514,7 +514,7 @@ app.MapGet("/reports/export.xlsx", async (IDbContextFactory<ApplicationDbContext
             Formula("=SUMIF($H$5:$H$" + customerDataEnd + ",$H$" + totalRow + ",$L$5:$L$" + customerDataEnd + ")"), ""
         };
     }).ToList();
-    SetSheet(rtl ? "العملاء" : "Clients", rtl ? ["الرمز", "الاسم", "رقم العداد", "سنة الاشتراك", "الهاتف", "الموقع", "الحالة", "العملة", "الفواتير", "الإجمالي", "المدفوع", "المتبقي", "ملاحظات"] : ["Code", "Nom", "N° compteur", "Année d’abonnement", "Téléphone", "Secteur", "État", "Devise", "Factures", "Total", "Payé", "Solde", "Notes"], customerData, customerTotals);
+    SetSheet(rtl ? "الزبائن" : "Clients", rtl ? ["الرمز", "الاسم", "رقم العداد", "سنة الاشتراك", "الهاتف", "الموقع", "الحالة", "العملة", "الفواتير", "الإجمالي", "المدفوع", "المتبقي", "ملاحظات"] : ["Code", "Nom", "N° compteur", "Année d’abonnement", "Téléphone", "Secteur", "État", "Devise", "Factures", "Total", "Payé", "Solde", "Notes"], customerData, customerTotals);
     var invoiceData = invoices.Select((i, index) =>
     {
         var paid = i.Payments.Sum(p => p.Amount); var row = index + 5;
@@ -533,7 +533,7 @@ app.MapGet("/reports/export.xlsx", async (IDbContextFactory<ApplicationDbContext
             Formula("=SUMIF($G$5:$G$" + invoiceDataEnd + ",$G$" + totalRow + ",$J$5:$J$" + invoiceDataEnd + ")"), ""
         };
     }).ToList();
-    SetSheet(rtl ? "الفواتير" : "Factures", rtl ? ["رقم الفاتورة", "العميل", "البيان", "الإصدار", "الشهر", "الاستحقاق", "العملة", "الإجمالي", "المدفوع", "المتبقي", "الحالة"] : ["N° facture", "Client", "Description", "Émise le", "Mois", "Échéance", "Devise", "Total", "Payé", "Solde", "Statut"], invoiceData, invoiceTotals);
+    SetSheet(rtl ? "الفواتير" : "Factures", rtl ? ["رقم الفاتورة", "الزبون", "البيان", "الإصدار", "الشهر", "الاستحقاق", "العملة", "الإجمالي", "المدفوع", "المتبقي", "الحالة"] : ["N° facture", "Client", "Description", "Émise le", "Mois", "Échéance", "Devise", "Total", "Payé", "Solde", "Statut"], invoiceData, invoiceTotals);
     var monthlyArchive = allInvoices.GroupBy(i => new { Month = i.IssuedOn.ToString("yyyy-MM"), i.CurrencyCode }).OrderBy(g => g.Key.Month).ThenBy(g => g.Key.CurrencyCode).Select(g => new object[] { g.Key.Month, g.Key.CurrencyCode, g.Count(), g.Sum(i => i.Amount), g.Sum(i => i.Payments.Sum(p => p.Amount)), Math.Max(0, g.Sum(i => i.Amount) - g.Sum(i => i.Payments.Sum(p => p.Amount))) }).ToList();
     var archiveDataEnd = Math.Max(5, monthlyArchive.Count + 4);
     var archiveTotals = allInvoices.Select(i => i.CurrencyCode).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(currency => currency).Select((currency, index) =>
@@ -570,7 +570,7 @@ app.MapGet("/reports/export.xlsx", async (IDbContextFactory<ApplicationDbContext
         };
     }).ToList();
     SetSheet(rtl ? "الدفعات" : "Paiements", rtl
-        ? ["حالة السداد", "المبلغ المدفوع", "اسم العميل", "فترة الفاتورة", "بيان الفاتورة", "رقم الفاتورة", "رقم العداد", "تاريخ الدفع", "المنطقة", "العملة", "مرجع الدفع", "سُجل بواسطة"]
+        ? ["حالة السداد", "المبلغ المدفوع", "اسم الزبون", "فترة الفاتورة", "بيان الفاتورة", "رقم الفاتورة", "رقم العداد", "تاريخ الدفع", "المنطقة", "العملة", "مرجع الدفع", "سُجل بواسطة"]
         : ["État du paiement", "Montant payé", "Nom du client", "Période de facture", "Objet de la facture", "N° facture", "N° compteur", "Date du paiement", "Secteur", "Devise", "Référence", "Enregistré par"], paymentData, paymentTotals);
     var usageData = readings.Select((r, index) =>
     {
@@ -596,7 +596,7 @@ app.MapGet("/customers/export.xlsx", async (IDbContextFactory<ApplicationDbConte
     var french = CultureInfo.CurrentUICulture.Name.StartsWith("fr", StringComparison.OrdinalIgnoreCase);
     var rtl = !french;
     var agencyName = rtl ? "الوكالة الوطنية للتسيير المدمج للموارد المائية · AGIRE TAIRET" : "Agence nationale de gestion intégrée des ressources en eau · AGIRE TAIRET";
-    var reportTitle = rtl ? "تقرير سجل العملاء والعدادات والديون" : "Rapport des clients, compteurs et dettes";
+    var reportTitle = rtl ? "تقرير سجل الزبائن والعدادات والديون" : "Rapport des clients, compteurs et dettes";
     var generatedAt = DateTime.Now;
     await using var db = await factory.CreateDbContextAsync();
     var customers = await db.Customers.AsNoTracking().AsSplitQuery().Include(c => c.Invoices).ThenInclude(i => i.Payments).OrderBy(c => c.Name).ToListAsync();
@@ -622,7 +622,7 @@ app.MapGet("/customers/export.xlsx", async (IDbContextFactory<ApplicationDbConte
     workbook.Properties.Title = reportTitle;
     workbook.Properties.Subject = agencyName;
     workbook.CalculateMode = XLCalculateMode.Auto;
-    var sheet = workbook.Worksheets.Add(rtl ? "سجل العملاء" : "Registre clients");
+    var sheet = workbook.Worksheets.Add(rtl ? "سجل الزبائن" : "Registre clients");
     sheet.RightToLeft = rtl;
     sheet.TabColor = XLColor.FromHtml("#16867e");
     sheet.Style.Font.FontName = rtl ? "Traditional Arabic" : "Arabic Typesetting";
@@ -633,7 +633,7 @@ app.MapGet("/customers/export.xlsx", async (IDbContextFactory<ApplicationDbConte
     sheet.PageSetup.PagesTall = 0;
     sheet.PageSetup.SetRowsToRepeatAtTop(1, 4);
     var headers = rtl
-        ? new[] { "الرقم", "اسم العميل", "رمز العميل", "رقم العداد", "الهاتف", "الموقع", "سنة الاشتراك", "فترة القراءة", "القراءة السابقة م³", "القراءة الحالية م³", "الاستهلاك م³", "سعر الوحدة دج", "قيمة الاستهلاك دج", "إجمالي الفواتير دج", "المبلغ المحصل دج", "المتبقي دج", "ديون بعملات أخرى", "حالة الدين" }
+        ? new[] { "الرقم", "اسم الزبون", "رمز الزبون", "رقم العداد", "الهاتف", "الموقع", "سنة الاشتراك", "فترة القراءة", "القراءة السابقة م³", "القراءة الحالية م³", "الاستهلاك م³", "سعر الوحدة دج", "قيمة الاستهلاك دج", "إجمالي الفواتير دج", "المبلغ المحصل دج", "المتبقي دج", "ديون بعملات أخرى", "حالة الدين" }
         : new[] { "N°", "Nom du client", "Code client", "N° compteur", "Téléphone", "Secteur", "Année d’abonnement", "Période", "Ancien index m³", "Nouvel index m³", "Consommation m³", "Tarif DZD/m³", "Consommation DZD", "Facturé DZD", "Encaissé DZD", "Solde DZD", "Autres devises", "État de la dette" };
     sheet.Range(1, 1, 1, headers.Length).Merge();
     sheet.Cell(1, 1).Value = agencyName;
@@ -716,7 +716,7 @@ app.MapGet("/customers/export.xlsx", async (IDbContextFactory<ApplicationDbConte
     var totalRow = outputRow;
     sheet.Cell(totalRow, 1).Value = rtl ? "الإجمالي" : "Total";
     sheet.Range(totalRow, 2, totalRow, 8).Merge();
-    sheet.Cell(totalRow, 2).Value = $"{(rtl ? "عدد العملاء" : "Nombre de clients")}: {customers.Count:N0}";
+    sheet.Cell(totalRow, 2).Value = $"{(rtl ? "عدد الزبائن" : "Nombre de clients")}: {customers.Count:N0}";
     sheet.Cell(totalRow, 9).Value = "";
     sheet.Cell(totalRow, 10).Value = "";
     var lastDataRow = Math.Max(5, totalRow - 1);
