@@ -23,6 +23,12 @@ function Read-InstallerCredentials {
     $form.Width = 460; $form.Height = 255
     $form.StartPosition = 'CenterScreen'; $form.RightToLeft = 'Yes'; $form.RightToLeftLayout = $true
     $form.FormBorderStyle = 'FixedDialog'; $form.MaximizeBox = $false; $form.MinimizeBox = $false
+    $logoPath = Join-Path $packageDirectory 'agire-installer.png'
+    if (Test-Path $logoPath) {
+        $logo = New-Object System.Windows.Forms.PictureBox
+        $logo.Image = [System.Drawing.Image]::FromFile($logoPath); $logo.SizeMode = 'Zoom'; $logo.Width = 52; $logo.Height = 52; $logo.Location = New-Object System.Drawing.Point(365, 10)
+        $form.Controls.Add($logo)
+    }
     $emailLabel = New-Object System.Windows.Forms.Label
     $emailLabel.Text = 'بريد مدير المنصة'; $emailLabel.AutoSize = $true; $emailLabel.Location = New-Object System.Drawing.Point(24, 18)
     $emailBox = New-Object System.Windows.Forms.TextBox
