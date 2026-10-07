@@ -37,6 +37,7 @@ if (Test-Path $preservedData) {
 Rename-Item (Join-Path $output 'Hawdh.Launcher.exe') (Join-Path $output 'AGIRE.exe') -Force
 Copy-Item (Join-Path $output 'AGIRE.exe') (Join-Path $payload 'AGIRE.exe') -Force
 Copy-Item (Join-Path $output 'AGIRE.exe') (Join-Path $payload 'REST.exe') -Force
+Copy-Item (Join-Path $output 'AGIRE.exe') (Join-Path $output 'AGIRE-Setup.exe') -Force
 Copy-Item (Join-Path $repoRoot 'src\tools\Hawdh.Launcher\agire.ico') (Join-Path $payload 'agire.ico') -Force
 Copy-Item (Join-Path $repoRoot 'src\tools\Hawdh.Launcher\Assets\agire-installer.png') (Join-Path $payload 'agire-installer.png') -Force
 Set-Content -LiteralPath (Join-Path $output 'version.txt') -Value (git -C $repoRoot rev-parse --short HEAD) -Encoding ascii

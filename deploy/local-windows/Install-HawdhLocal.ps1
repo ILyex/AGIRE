@@ -191,6 +191,13 @@ $updateShortcut.Description = 'التحقق من تحديثات منصة AGIRE �
 $updateShortcut.IconLocation = "$(Join-Path $InstallDirectory 'AGIRE.exe'),0"
 $updateShortcut.Save()
 
+$restShortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'REST.lnk'))
+$restShortcut.TargetPath = Join-Path $InstallDirectory 'REST.exe'
+$restShortcut.WorkingDirectory = $InstallDirectory
+$restShortcut.Description = 'إعادة إعداد منصة AGIRE'
+$restShortcut.IconLocation = "$(Join-Path $InstallDirectory 'agire.ico'),0"
+$restShortcut.Save()
+
 $url = if ($ip) { "http://${ip}:$Port" } else { "http://$hostname`:$Port" }
 $urlShortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'فتح AGIRE.lnk'))
 $urlShortcut.TargetPath = $url

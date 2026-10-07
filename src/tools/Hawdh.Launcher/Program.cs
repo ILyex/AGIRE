@@ -838,6 +838,16 @@ internal sealed class LauncherForm : Form
                 shortcut.Description = "تشغيل AGIRE";
                 shortcut.Save();
             }
+            var rest = Path.Combine(root, "REST.exe");
+            if (File.Exists(rest))
+            {
+                dynamic restShortcut = shell.CreateShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "REST.lnk"));
+                restShortcut.TargetPath = rest;
+                restShortcut.IconLocation = $"{rest},0";
+                restShortcut.WorkingDirectory = root;
+                restShortcut.Description = "إعادة إعداد منصة AGIRE";
+                restShortcut.Save();
+            }
         }
         catch
         {
