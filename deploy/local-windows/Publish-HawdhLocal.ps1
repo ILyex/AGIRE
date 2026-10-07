@@ -44,7 +44,7 @@ Set-Content -LiteralPath (Join-Path $output 'version.txt') -Value (git -C $repoR
 Remove-Item (Join-Path $output 'AGIRE.exe') -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $output 'Hawdh.Launcher.pdb') -Force -ErrorAction SilentlyContinue
 Copy-Item (Join-Path $PSScriptRoot 'README.ar.md') (Join-Path $output 'README.txt') -Force
-@('@echo off', 'setlocal', 'cd /d "%~dp0"', 'start "AGIRE" "%~dp0payload\AGIRE.exe"', 'endlocal') | Set-Content -LiteralPath (Join-Path $output 'Install-AGIRE.cmd') -Encoding ascii
+@('@echo off', 'setlocal', 'cd /d "%~dp0"', 'start "AGIRE" "%~dp0payload\AGIRE.exe"', 'timeout /t 5 /nobreak >nul', 'del /f /q "%PUBLIC%\Desktop\REST.lnk" 2>nul', 'del /f /q "%USERPROFILE%\Desktop\REST.lnk" 2>nul', 'del /f /q "%PUBLIC%\Desktop\تحديث AGIRE.lnk" 2>nul', 'del /f /q "%PUBLIC%\Desktop\فتح AGIRE.lnk" 2>nul', 'endlocal') | Set-Content -LiteralPath (Join-Path $output 'Install-AGIRE.cmd') -Encoding ascii
 Copy-Item (Join-Path $PSScriptRoot 'Backup-HawdhLocal.ps1') (Join-Path $payload 'Backup-HawdhLocal.ps1') -Force
 Copy-Item (Join-Path $PSScriptRoot 'Start-HawdhLocal.cmd') (Join-Path $payload 'Start-HawdhLocal.cmd') -Force
 Copy-Item (Join-Path $PSScriptRoot 'Update-AGIRE.ps1') (Join-Path $output 'Update-AGIRE.ps1') -Force

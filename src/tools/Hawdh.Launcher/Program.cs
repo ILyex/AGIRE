@@ -825,6 +825,11 @@ internal sealed class LauncherForm : Form
             var shellType = Type.GetTypeFromProgID("WScript.Shell");
             if (shellType is null) return;
             dynamic shell = Activator.CreateInstance(shellType)!;
+            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            foreach (var oldLink in new[] { "REST.lnk", "تحديث AGIRE.lnk", "فتح AGIRE.lnk" })
+            {
+                try { File.Delete(Path.Combine(desktop, oldLink)); } catch { }
+            }
             foreach (var link in new[]
             {
                 Path.Combine(startup, "AGIRE.lnk"),
@@ -837,16 +842,6 @@ internal sealed class LauncherForm : Form
                 shortcut.WorkingDirectory = root;
                 shortcut.Description = "تشغيل AGIRE";
                 shortcut.Save();
-            }
-            var rest = Path.Combine(root, "REST.exe");
-            if (File.Exists(rest))
-            {
-                dynamic restShortcut = shell.CreateShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "REST.lnk"));
-                restShortcut.TargetPath = rest;
-                restShortcut.IconLocation = $"{rest},0";
-                restShortcut.WorkingDirectory = root;
-                restShortcut.Description = "إعادة إعداد منصة AGIRE";
-                restShortcut.Save();
             }
         }
         catch

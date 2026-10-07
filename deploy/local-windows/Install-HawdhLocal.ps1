@@ -168,7 +168,11 @@ if (-not (Get-NetFirewallRule -DisplayName $firewallName -ErrorAction SilentlyCo
 }
 
 $shell = New-Object -ComObject WScript.Shell
-$shortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'AGIRE.lnk'))
+$desktop = [Environment]::GetFolderPath('CommonDesktopDirectory')
+foreach ($oldLink in @('REST.lnk', 'تحديث AGIRE.lnk', 'فتح AGIRE.lnk')) {
+    Remove-Item -LiteralPath (Join-Path $desktop $oldLink) -Force -ErrorAction SilentlyContinue
+}
+$shortcut = $shell.CreateShortcut((Join-Path $desktop 'AGIRE.lnk'))
 $shortcut.TargetPath = $startFile
 $shortcut.WorkingDirectory = $InstallDirectory
 $shortcut.Description = 'تشغيل منصة مهندس على هذا الكمبيوتر'
@@ -183,26 +187,7 @@ $startupShortcut.Description = 'تشغيل منصة مهندس تلقائيا ع
 $startupShortcut.IconLocation = "$(Join-Path $InstallDirectory 'AGIRE.exe'),0"
 $startupShortcut.Save()
 
-$updateShortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'تحديث AGIRE.lnk'))
-$updateShortcut.TargetPath = (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe')
-$updateShortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$(Join-Path $InstallDirectory 'Update-AGIRE.ps1')`" -InstallDirectory `"$InstallDirectory`""
-$updateShortcut.WorkingDirectory = $InstallDirectory
-$updateShortcut.Description = 'التحقق من تحديثات منصة AGIRE وتثبيتها'
-$updateShortcut.IconLocation = "$(Join-Path $InstallDirectory 'AGIRE.exe'),0"
-$updateShortcut.Save()
-
-$restShortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'REST.lnk'))
-$restShortcut.TargetPath = Join-Path $InstallDirectory 'REST.exe'
-$restShortcut.WorkingDirectory = $InstallDirectory
-$restShortcut.Description = 'إعادة إعداد منصة AGIRE'
-$restShortcut.IconLocation = "$(Join-Path $InstallDirectory 'agire.ico'),0"
-$restShortcut.Save()
-
 $url = if ($ip) { "http://${ip}:$Port" } else { "http://$hostname`:$Port" }
-$urlShortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'فتح AGIRE.lnk'))
-$urlShortcut.TargetPath = $url
-$urlShortcut.Description = "فتح منصة مهندس - $url"
-$urlShortcut.Save()
 
 # Start the final instance directly now; this makes localhost available immediately.
 Start-Process -FilePath $startFile -WorkingDirectory $InstallDirectory -WindowStyle Hidden | Out-Null
