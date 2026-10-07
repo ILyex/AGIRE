@@ -71,7 +71,7 @@ builder.Services.AddAuthorization(options =>
 {
     var adminMfaPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
-        .RequireAssertion(context => isLocal || !context.User.IsInRole("Administrator")
+        .RequireAssertion(context => isDevelopment || isLocal || !context.User.IsInRole("Administrator")
             || context.User.HasClaim("hawdh:mfa", "true"))
         .Build();
     options.DefaultPolicy = adminMfaPolicy;
@@ -265,7 +265,7 @@ app.MapPost("/Account/CompleteProfile", async (HttpContext context, UserManager<
     user.ProfileCompleted = true;
     var result = await users.UpdateAsync(user);
     return result.Succeeded ? Results.Redirect("/") : Results.Redirect("/");
-}).RequireAuthorization();
+}).RequireAuthorization("AccountSecurity");
 
 app.MapGet("/health", async (IDbContextFactory<ApplicationDbContext> factory) =>
 {
