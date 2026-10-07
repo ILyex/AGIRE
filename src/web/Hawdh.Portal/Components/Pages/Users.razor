@@ -18,7 +18,7 @@ else { <div class="table-scroll users-table-scroll"><table class="users-table"><
 @if (ModalOpen)
 {
 <div class="modal-backdrop" @onclick="Close"><section class="modal-card" role="dialog" aria-modal="true" @onclick:stopPropagation="true"><div class="modal-heading"><h2>@T["createUser"]</h2><button type="button" class="modal-close" aria-label="@T["close"]" @onclick="Close"><AppIcon Name="close" Size="18" /></button></div>
-<EditForm Model="Form" OnValidSubmit="Save"><DataAnnotationsValidator/><ValidationSummary class="validation-errors"/><div class="form-grid">
+<EditForm Model="Form" FormName="create-user" OnValidSubmit="Save"><DataAnnotationsValidator/><ValidationSummary class="validation-errors"/><div class="form-grid">
 <div class="field full"><label>@T["name"] *</label><InputText class="form-control" @bind-Value="Form.DisplayName" maxlength="120" /></div>
 <div class="field full"><label>@T["email"] *</label><InputText class="form-control" type="email" @bind-Value="Form.Email" autocomplete="off" maxlength="256" /></div>
 <div class="field full"><label>@T["temporaryPassword"] *</label><InputText class="form-control" type="password" @bind-Value="Form.Password" autocomplete="new-password" minlength="12" /></div>

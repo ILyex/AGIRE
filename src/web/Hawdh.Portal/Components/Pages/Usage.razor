@@ -45,7 +45,7 @@ else
 @if (ModalOpen)
 {
 <div class="modal-backdrop" @onclick="Close"><section class="modal-card" role="dialog" aria-modal="true" @onclick:stopPropagation="true"><div class="modal-heading"><h2>@T["recordReading"]</h2><button type="button" class="modal-close" aria-label="@T["close"]" @onclick="Close"><AppIcon Name="close" Size="18" /></button></div>
-<EditForm Model="Form" OnValidSubmit="Save"><DataAnnotationsValidator/><ValidationSummary class="validation-errors"/><div class="form-grid">
+<EditForm Model="Form" FormName="record-usage-reading" OnValidSubmit="Save"><DataAnnotationsValidator/><ValidationSummary class="validation-errors"/><div class="form-grid">
 <div class="field full"><label>@T["customer"] *</label><SelectMenu TValue="Guid?" Label="@T["customer"]" Placeholder="—" Options="UsageCustomerOptions" @bind-Value="Form.CustomerId" @bind-Value:after="LoadPreviousReading" /></div>
 <div class="field"><label>@T["period"] *</label><DatePicker @bind-Value="Form.Period" @bind-Value:after="LoadPreviousReading" Label="@T["period"]" /></div>
 <div class="field"><label>@T["rate"] (@T["currency"]/m³)</label><div class="form-control tariff-readonly" aria-readonly="true"><b>@(TariffConfigured ? CentralTariff!.Value.ToString("N4", CultureInfo.CurrentCulture) : T["tariffNotConfigured"])</b><span>@T["currency"] / m³</span></div></div>

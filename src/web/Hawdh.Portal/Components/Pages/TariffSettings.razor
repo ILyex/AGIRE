@@ -22,7 +22,7 @@
             <div class="tariff-warning"><AppIcon Name="info" Size="16" />@T["tariffNotSetHint"]</div>
         }
     </div>
-    <EditForm Model="Form" OnValidSubmit="Save">
+    <EditForm Model="Form" FormName="update-tariff" OnValidSubmit="Save">
         <DataAnnotationsValidator />
         <ValidationSummary class="validation-errors" />
         <div class="field">

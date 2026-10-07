@@ -34,7 +34,7 @@ else { <div class="table-scroll"><table><thead><tr><th>@T["invoiceNo"]</th><th>@
 <div class="modal-backdrop" @onclick="Close"><section class="modal-card" role="dialog" aria-modal="true" @onclick:stopPropagation="true"><div class="modal-heading"><h2>@(Paying is null ? T["newInvoice"] : T["recordPayment"])</h2><button type="button" class="modal-close" aria-label="@T["close"]" @onclick="Close"><AppIcon Name="close" Size="18" /></button></div>
 @if (Paying is null)
 {
-    <EditForm Model="NewForm" OnValidSubmit="SaveInvoice"><DataAnnotationsValidator /><ValidationSummary class="validation-errors"/><div class="form-grid">
+    <EditForm Model="NewForm" FormName="create-invoice" OnValidSubmit="SaveInvoice"><DataAnnotationsValidator /><ValidationSummary class="validation-errors"/><div class="form-grid">
         <div class="field full"><label>@T["customer"] *</label><SelectMenu TValue="Guid?" Label="@T["customer"]" Placeholder="—" Options="InvoiceCustomerOptions" @bind-Value="NewForm.CustomerId" /><ValidationMessage For="() => NewForm.CustomerId" class="validation-message"/></div>
         <div class="field"><label>@T["invoiceNo"]</label><InputText class="form-control" @bind-Value="NewForm.Number" maxlength="40"/></div>
         <div class="field"><label>@T["description"] *</label><InputText class="form-control" @bind-Value="NewForm.Description" maxlength="400"/></div>
@@ -46,7 +46,7 @@ else { <div class="table-scroll"><table><thead><tr><th>@T["invoiceNo"]</th><th>@
 else
 {
     <div class="invoice-summary"><span>@Paying.Invoice.Number · @Paying.Invoice.Customer.Name</span><b>@Money(Paying.Invoice.Amount-Paying.Paid) @T["remaining"]</b></div>
-    <EditForm Model="PaymentForm" OnValidSubmit="SavePayment"><DataAnnotationsValidator/><ValidationSummary class="validation-errors"/><div class="form-grid"><div class="field"><label>@T["paymentAmount"] *</label><InputNumber class="form-control" @bind-Value="PaymentForm.Amount" min="0.01" step="0.01"/></div><div class="field"><label>@T["paymentDate"] *</label><DatePicker @bind-Value="PaymentForm.PaidOn" Label="@T["paymentDate"]" /></div><div class="field full"><label>Référence / Reference</label><InputText class="form-control" @bind-Value="PaymentForm.Reference" maxlength="80"/></div></div><div class="modal-footer"><button class="btn-main" type="submit">@T["recordPayment"]</button><button class="btn-outline" type="button" @onclick="Close">@T["cancel"]</button></div></EditForm>
+    <EditForm Model="PaymentForm" FormName="record-invoice-payment" OnValidSubmit="SavePayment"><DataAnnotationsValidator/><ValidationSummary class="validation-errors"/><div class="form-grid"><div class="field"><label>@T["paymentAmount"] *</label><InputNumber class="form-control" @bind-Value="PaymentForm.Amount" min="0.01" step="0.01"/></div><div class="field"><label>@T["paymentDate"] *</label><DatePicker @bind-Value="PaymentForm.PaidOn" Label="@T["paymentDate"]" /></div><div class="field full"><label>Référence / Reference</label><InputText class="form-control" @bind-Value="PaymentForm.Reference" maxlength="80"/></div></div><div class="modal-footer"><button class="btn-main" type="submit">@T["recordPayment"]</button><button class="btn-outline" type="button" @onclick="Close">@T["cancel"]</button></div></EditForm>
 }
 </section></div>
 }
