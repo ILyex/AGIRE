@@ -1861,6 +1861,22 @@ html[data-theme="dark"] .security-notice > a.security-notice-link:hover { backgr
 .auth-card .auth-form { display: grid !important; grid-template-columns: minmax(0,1fr); align-items: stretch; gap: 0; }
 .auth-card .auth-form .auth-input-wrap { display: block !important; position: relative; width: 100% !important; }
 .auth-card .auth-form .auth-input-wrap .form-control { display: block !important; width: 100% !important; min-width: 0 !important; }
+.auth-card .auth-input-wrap > .app-icon {
+    position: absolute;
+    inset-inline-start: 13px;
+    inset-block-start: 50%;
+    z-index: 2;
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+.auth-card .auth-input-wrap .form-control {
+    box-sizing: border-box;
+    padding-inline-start: 42px !important;
+    padding-inline-end: 12px !important;
+}
 html[dir="rtl"] .account-form-page { margin-inline-start: auto; }
 html[data-theme="dark"] .personal-data-card { background: color-mix(in srgb,var(--canvas) 82%,var(--card)); }
 .auth-mini-brand-lockup { width: 94px; justify-items: center; }
