@@ -92,7 +92,7 @@ internal sealed class ResetConfirmForm : Form
         };
         ApplyRounded(reset, 9);
         var no = MakeButton("إلغاء", DialogResult.No, Color.FromArgb(43, 60, 68));
-        no.Bounds = new Rectangle(24, 300, 198, 38);
+        no.Bounds = new Rectangle(238, 245, 198, 42);
         ApplyRounded(no, 9);
         var close = new Button { Text = string.Empty, Bounds = new Rectangle(402, 20, 34, 34), Font = UiFont(17), BackColor = Color.FromArgb(43, 60, 68), ForeColor = Color.FromArgb(190, 205, 210), FlatStyle = FlatStyle.Flat, DialogResult = DialogResult.Cancel, UseVisualStyleBackColor = false };
         close.FlatAppearance.BorderSize = 0;
@@ -135,7 +135,7 @@ internal sealed class ResetConfirmForm : Form
     {
         frame.Bounds = bounds; frame.BackColor = Color.FromArgb(28, 33, 38); frame.Padding = Padding.Empty; frame.Tag = kind;
         ApplyRounded(frame, 10);
-        input.Dock = DockStyle.None; input.BorderStyle = BorderStyle.None; input.Font = UiFont(11.5f); input.BackColor = frame.BackColor; input.ForeColor = Color.White; input.PlaceholderText = placeholder; input.TextAlign = HorizontalAlignment.Right; input.RightToLeft = RightToLeft.No; input.AutoSize = false; input.Size = new Size(bounds.Width - 76, 30); input.Location = new Point(12, 5);
+        input.Dock = DockStyle.None; input.BorderStyle = BorderStyle.None; input.Font = UiFont(11.5f); input.BackColor = frame.BackColor; input.ForeColor = Color.White; input.PlaceholderText = placeholder; input.TextAlign = HorizontalAlignment.Right; input.RightToLeft = RightToLeft.No; input.AutoSize = false; input.Padding = new Padding(0, 2, 0, 0); input.HideSelection = false; input.Cursor = Cursors.IBeam; input.Size = new Size(bounds.Width - 76, 30); input.Location = new Point(12, 5);
         if (kind == "password") input.PasswordChar = '●';
         frame.Controls.Add(input);
         input.MouseDown += (_, _) => FocusResetInput(input);
@@ -149,7 +149,7 @@ internal sealed class ResetConfirmForm : Form
         frame.MouseDown += (_, _) => FocusResetInput(input);
         if (kind == "password")
         {
-            passwordToggle.Text = string.Empty; passwordToggle.Bounds = new Rectangle(8, 5, 26, 30); passwordToggle.FlatStyle = FlatStyle.Flat; passwordToggle.FlatAppearance.BorderSize = 0; passwordToggle.BackColor = Color.Transparent; passwordToggle.UseVisualStyleBackColor = false; passwordToggle.TabStop = false;
+            passwordToggle.Text = string.Empty; passwordToggle.Bounds = new Rectangle(8, 5, 26, 30); passwordToggle.FlatStyle = FlatStyle.Flat; passwordToggle.FlatAppearance.BorderSize = 0; passwordToggle.FlatAppearance.MouseOverBackColor = frame.BackColor; passwordToggle.FlatAppearance.MouseDownBackColor = frame.BackColor; passwordToggle.FlatAppearance.CheckedBackColor = frame.BackColor; passwordToggle.BackColor = frame.BackColor; passwordToggle.UseVisualStyleBackColor = false; passwordToggle.TabStop = false; passwordToggle.AutoSize = false;
             passwordToggle.Paint += (_, e) => { e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias; var icon = LoadTintedIcon(password.PasswordChar == '\0' ? "w.png" : "view.png"); e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic; e.Graphics.DrawImage(icon, new Rectangle(3, 5, 20, 20)); icon.Dispose(); };
             passwordToggle.Click += (_, _) => { password.PasswordChar = password.PasswordChar == '\0' ? '●' : '\0'; password.Focus(); password.SelectionStart = password.TextLength; passwordToggle.Invalidate(); };
             frame.Controls.Add(passwordToggle); passwordToggle.BringToFront();
@@ -595,10 +595,12 @@ internal sealed class LauncherForm : Form
             passwordToggle.TabStop = false;
             passwordToggle.FlatStyle = FlatStyle.Flat;
             passwordToggle.FlatAppearance.BorderSize = 0;
-            passwordToggle.BackColor = Color.Transparent;
+            passwordToggle.BackColor = frame.BackColor;
             passwordToggle.UseVisualStyleBackColor = false;
-            passwordToggle.FlatAppearance.MouseOverBackColor = Color.Transparent;
-            passwordToggle.FlatAppearance.MouseDownBackColor = Color.Transparent;
+            passwordToggle.FlatAppearance.MouseOverBackColor = frame.BackColor;
+            passwordToggle.FlatAppearance.MouseDownBackColor = frame.BackColor;
+            passwordToggle.FlatAppearance.CheckedBackColor = frame.BackColor;
+            passwordToggle.AutoSize = false;
             passwordToggle.Cursor = Cursors.Hand;
             passwordToggle.Paint += (_, e) =>
             {
