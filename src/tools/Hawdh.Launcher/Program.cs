@@ -135,7 +135,7 @@ internal sealed class ResetConfirmForm : Form
     {
         frame.Bounds = bounds; frame.BackColor = Color.FromArgb(28, 33, 38); frame.Padding = Padding.Empty; frame.Tag = kind;
         ApplyRounded(frame, 10);
-        input.Dock = DockStyle.None; input.BorderStyle = BorderStyle.None; input.Font = UiFont(11.5f); input.BackColor = frame.BackColor; input.ForeColor = Color.White; input.PlaceholderText = placeholder; input.TextAlign = HorizontalAlignment.Right; input.RightToLeft = RightToLeft.No; input.AutoSize = false; input.Padding = new Padding(0, 2, 0, 0); input.HideSelection = false; input.Cursor = Cursors.IBeam; input.Size = new Size(bounds.Width - 76, 30); input.Location = new Point(12, 5);
+        input.Dock = DockStyle.None; input.BorderStyle = BorderStyle.None; input.Font = UiFont(11.5f); input.BackColor = frame.BackColor; input.ForeColor = Color.White; input.PlaceholderText = placeholder; input.TextAlign = HorizontalAlignment.Right; input.RightToLeft = RightToLeft.Yes; input.AutoSize = false; input.Padding = Padding.Empty; input.HideSelection = false; input.Cursor = Cursors.IBeam; input.Size = new Size(bounds.Width - 76, 32); input.Location = new Point(12, 4);
         if (kind == "password") input.PasswordChar = '●';
         frame.Controls.Add(input);
         input.MouseDown += (_, _) => FocusResetInput(input);
