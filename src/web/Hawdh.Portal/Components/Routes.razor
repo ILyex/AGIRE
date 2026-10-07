@@ -1,13 +1,16 @@
 @using Hawdh.Portal.Components.Account.Shared
 @inject Hawdh.Portal.Localization.UiText T
 @inject IWebHostEnvironment Environment
+@inject IConfiguration Configuration
 <Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
             <NotAuthorized Context="authenticationState">
                 @if (authenticationState.User.Identity?.IsAuthenticated == true
                     && authenticationState.User.IsInRole("Administrator")
+                    && Configuration.GetValue<bool>("Security:EnableTwoFactor")
                     && !Environment.IsEnvironment("Local")
+                    && !Environment.IsDevelopment()
                     && !authenticationState.User.HasClaim("hawdh:mfa", "true"))
                 {
                     <section class="account-security-page">

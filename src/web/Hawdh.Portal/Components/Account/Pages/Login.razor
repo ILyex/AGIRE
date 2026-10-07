@@ -11,6 +11,7 @@
 @inject ILogger<Login> Logger
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
+@inject IConfiguration Configuration
 
 <PageTitle>@T["loginTitle"] — @T["brand"]</PageTitle>
 <div class="auth-screen">
@@ -59,7 +60,17 @@
             await Task.Delay(Random.Shared.Next(180, 320));
             return;
         }
-        var result = await SignInManager.PasswordSignInAsync(user, Input.Password, Input.RememberMe, lockoutOnFailure: true);
+        SignInResult result;
+        if (!Configuration.GetValue<bool>("Security:EnableTwoFactor") && await UserManager.GetTwoFactorEnabledAsync(user))
+        {
+            result = await SignInManager.CheckPasswordSignInAsync(user, Input.Password, lockoutOnFailure: true);
+            if (result.Succeeded)
+                await SignInManager.SignInAsync(user, Input.RememberMe);
+        }
+        else
+        {
+            result = await SignInManager.PasswordSignInAsync(user, Input.Password, Input.RememberMe, lockoutOnFailure: true);
+        }
         if (result.Succeeded)
         {
             Logger.LogInformation("User logged in.");

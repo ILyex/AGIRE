@@ -2,6 +2,7 @@
 @using Hawdh.Portal.Data
 @inject UiText T
 @inject SignInManager<ApplicationUser> SignInManager
+@inject IConfiguration Configuration
 
 <nav class="account-settings-nav" aria-label="@T["accountSettings"]">
     <NavLink class="account-settings-link" href="Account/Manage" Match="NavLinkMatch.All"><AppIcon Name="users" Size="16" /><span>@T["profile"]</span></NavLink>
@@ -11,7 +12,10 @@
     {
         <NavLink class="account-settings-link" href="Account/Manage/ExternalLogins"><AppIcon Name="users" Size="16" /><span>@T["externalLogins"]</span></NavLink>
     }
-    <NavLink class="account-settings-link" href="Account/Manage/TwoFactorAuthentication"><AppIcon Name="shield" Size="16" /><span>@T["twoFactorTitle"]</span></NavLink>
+    @if (Configuration.GetValue<bool>("Security:EnableTwoFactor"))
+    {
+        <NavLink class="account-settings-link" href="Account/Manage/TwoFactorAuthentication"><AppIcon Name="shield" Size="16" /><span>@T["twoFactorTitle"]</span></NavLink>
+    }
     <NavLink class="account-settings-link" href="Account/Manage/Passkeys"><AppIcon Name="key" Size="16" /><span>@T["passkeys"]</span></NavLink>
     <NavLink class="account-settings-link" href="Account/Manage/PersonalData"><AppIcon Name="reports" Size="16" /><span>@T["personalData"]</span></NavLink>
 </nav>

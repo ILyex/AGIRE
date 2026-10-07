@@ -3,6 +3,7 @@
 
 @inject UiText T
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IConfiguration Configuration
 
 <PageTitle>@T["accessDeniedTitle"] — @T["brand"]</PageTitle>
 
@@ -26,6 +27,7 @@
     {
         var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         needsAdminMfa = state.User.IsInRole("Administrator")
+            && Configuration.GetValue<bool>("Security:EnableTwoFactor")
             && !state.User.HasClaim("hawdh:mfa", "true");
     }
 }

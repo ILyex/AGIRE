@@ -19,6 +19,7 @@ var smtpEmailOptions = builder.Configuration.GetSection("Smtp").Get<SmtpEmailOpt
 var isDevelopment = builder.Environment.IsDevelopment();
 var isLocal = builder.Environment.IsEnvironment("Local");
 var isProduction = !isDevelopment && !isLocal;
+var twoFactorEnabled = builder.Configuration.GetValue<bool>("Security:EnableTwoFactor");
 
 if (isProduction)
 {
@@ -71,13 +72,15 @@ builder.Services.AddAuthorization(options =>
 {
     var adminMfaPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
-        .RequireAssertion(context => isDevelopment || isLocal || !context.User.IsInRole("Administrator")
+        .RequireAssertion(context => !twoFactorEnabled || isDevelopment || isLocal || !context.User.IsInRole("Administrator")
             || context.User.HasClaim("hawdh:mfa", "true"))
         .Build();
     options.DefaultPolicy = adminMfaPolicy;
     options.FallbackPolicy = adminMfaPolicy;
     options.AddPolicy("AdminMfa", adminMfaPolicy);
     options.AddPolicy("AccountSecurity", policy => policy.RequireAuthenticatedUser());
+    options.AddPolicy("TwoFactorFeature", policy => policy.RequireAuthenticatedUser()
+        .RequireAssertion(_ => twoFactorEnabled));
 });
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();

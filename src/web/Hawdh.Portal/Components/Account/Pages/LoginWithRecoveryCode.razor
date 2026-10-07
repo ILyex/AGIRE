@@ -11,6 +11,7 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject IdentityRedirectManager RedirectManager
 @inject ILogger<LoginWithRecoveryCode> Logger
+@inject IConfiguration Configuration
 
 <PageTitle>@T["recoveryCodeTitle"] — @T["brand"]</PageTitle>
 
@@ -50,6 +51,12 @@
     protected override async Task OnInitializedAsync()
     {
         Input ??= new();
+
+        if (!Configuration.GetValue<bool>("Security:EnableTwoFactor"))
+        {
+            RedirectManager.RedirectTo("Account/Login");
+            return;
+        }
 
         // Ensure the user has gone through the username & password screen first
         user = await SignInManager.GetTwoFactorAuthenticationUserAsync() ??

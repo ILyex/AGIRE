@@ -1,5 +1,6 @@
 @page "/Account/Manage/Disable2fa"
 @attribute [Authorize(Policy = "AdminMfa")]
+@attribute [Authorize(Policy = "TwoFactorFeature")]
 
 @using Microsoft.AspNetCore.Identity
 @using Hawdh.Portal.Data

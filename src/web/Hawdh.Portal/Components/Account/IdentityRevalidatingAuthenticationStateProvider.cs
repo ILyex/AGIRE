@@ -12,7 +12,8 @@ internal sealed class IdentityRevalidatingAuthenticationStateProvider(
         ILoggerFactory loggerFactory,
         IServiceScopeFactory scopeFactory,
         IOptions<IdentityOptions> options,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IConfiguration configuration)
     : RevalidatingServerAuthenticationStateProvider(loggerFactory)
 {
     protected override TimeSpan RevalidationInterval => TimeSpan.FromMinutes(5);
@@ -29,7 +30,9 @@ internal sealed class IdentityRevalidatingAuthenticationStateProvider(
             return false;
 
         var isAdministrator = await userManager.IsInRoleAsync(user, "Administrator");
-        return environment.IsEnvironment("Local") || !isAdministrator || user.TwoFactorEnabled == authenticationState.User.HasClaim("hawdh:mfa", "true");
+        var twoFactorEnabled = configuration.GetValue<bool>("Security:EnableTwoFactor");
+        return !twoFactorEnabled || environment.IsDevelopment() || environment.IsEnvironment("Local")
+            || !isAdministrator || user.TwoFactorEnabled == authenticationState.User.HasClaim("hawdh:mfa", "true");
     }
 
     private async Task<bool> ValidateSecurityStampAsync(UserManager<ApplicationUser> userManager, ApplicationUser user, ClaimsPrincipal principal)

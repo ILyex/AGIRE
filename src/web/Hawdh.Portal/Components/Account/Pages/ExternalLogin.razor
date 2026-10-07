@@ -18,6 +18,7 @@
 @inject IdentityRedirectManager RedirectManager
 @inject ILogger<ExternalLogin> Logger
 @inject UiText T
+@inject IConfiguration Configuration
 
 <PageTitle>@T["externalLoginTitle"] — @T["brand"]</PageTitle>
 <div class="auth-screen auth-screen-standalone">
@@ -111,7 +112,7 @@
             externalLoginInfo.LoginProvider,
             externalLoginInfo.ProviderKey,
             isPersistent: false,
-            bypassTwoFactor: false);
+            bypassTwoFactor: !Configuration.GetValue<bool>("Security:EnableTwoFactor"));
 
         if (result.Succeeded)
         {

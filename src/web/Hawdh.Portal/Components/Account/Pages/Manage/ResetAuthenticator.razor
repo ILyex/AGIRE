@@ -1,4 +1,5 @@
 @page "/Account/Manage/ResetAuthenticator"
+@attribute [Authorize(Policy = "TwoFactorFeature")]
 
 @using Microsoft.AspNetCore.Identity
 @using Hawdh.Portal.Data
