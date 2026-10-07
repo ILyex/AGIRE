@@ -79,7 +79,7 @@ internal sealed class ResetConfirmForm : Form
         var divider = new Panel { Bounds = new Rectangle(24, 102, 412, 1), BackColor = Color.FromArgb(65, 76, 82) };
         ConfigureField(emailFrame, email, new Rectangle(24, 125, 412, 40), "email", "البريد الإلكتروني للمدير");
         ConfigureField(passwordFrame, password, new Rectangle(24, 178, 412, 40), "password", "كلمة المرور");
-        reset.Text = "إعادة الإعداد"; reset.Bounds = new Rectangle(24, 245, 412, 42); reset.Font = UiFont(10, FontStyle.Bold); reset.BackColor = Color.FromArgb(64, 177, 205); reset.ForeColor = Color.White; reset.FlatStyle = FlatStyle.Flat; reset.UseVisualStyleBackColor = false; reset.FlatAppearance.BorderSize = 0; reset.FlatAppearance.BorderColor = reset.BackColor;
+        reset.Text = "إعادة الإعداد"; reset.Bounds = new Rectangle(24, 245, 198, 42); reset.Font = UiFont(10, FontStyle.Bold); reset.BackColor = Color.FromArgb(190, 61, 66); reset.ForeColor = Color.White; reset.FlatStyle = FlatStyle.Flat; reset.UseVisualStyleBackColor = false; reset.FlatAppearance.BorderSize = 0; reset.FlatAppearance.BorderColor = reset.BackColor; reset.FlatAppearance.MouseOverBackColor = Color.FromArgb(207, 73, 78); reset.FlatAppearance.MouseDownBackColor = Color.FromArgb(163, 48, 53);
         reset.Paint += (_, e) => { e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias; using var b = new SolidBrush(reset.BackColor); using var p = RoundedPath(new Rectangle(0, 0, reset.Width - 1, reset.Height - 1), 9); e.Graphics.FillPath(b, p); TextRenderer.DrawText(e.Graphics, reset.Text, reset.Font, reset.ClientRectangle, reset.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding); };
         reset.Click += (_, _) =>
         {
