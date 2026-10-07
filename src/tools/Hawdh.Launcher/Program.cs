@@ -54,6 +54,8 @@ internal sealed class ResetConfirmForm : Form
     private readonly TextBox password = new();
     private readonly Panel emailFrame = new();
     private readonly Panel passwordFrame = new();
+    private readonly Label emailHint = new();
+    private readonly Label passwordHint = new();
     private readonly PrivateFontCollection fonts = new();
     private FontFamily? platformFont;
     private readonly Button reset = new();
@@ -66,6 +68,8 @@ internal sealed class ResetConfirmForm : Form
     {
         LoadFont();
         Text = "إعادة إعداد المنصة";
+        AutoScaleMode = AutoScaleMode.None;
+        AutoScaleDimensions = new SizeF(96f, 96f);
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(460, 360);
@@ -114,11 +118,18 @@ internal sealed class ResetConfirmForm : Form
         french = useFrench;
         titleLabel!.Text = french ? "Réinitialiser la plateforme" : "إعادة إعداد المنصة";
         messageLabel!.Text = french ? "Saisissez les identifiants de l’administrateur" : "أدخل بيانات المدير لتأكيد إعادة الإعداد";
-        email.PlaceholderText = french ? "E-mail de l’administrateur" : "البريد الإلكتروني للمدير";
-        password.PlaceholderText = french ? "Mot de passe" : "كلمة المرور";
+        emailHint.Text = french ? "E-mail de l’administrateur" : "البريد الإلكتروني للمدير";
+        passwordHint.Text = french ? "Mot de passe" : "كلمة المرور";
+        email.RightToLeft = password.RightToLeft = french ? RightToLeft.No : RightToLeft.Yes;
+        emailHint.RightToLeft = passwordHint.RightToLeft = french ? RightToLeft.No : RightToLeft.Yes;
+        emailHint.TextAlign = passwordHint.TextAlign = french ? ContentAlignment.MiddleLeft : ContentAlignment.MiddleRight;
+        passwordToggle.Location = french ? new Point(passwordFrame.Width - 34, 5) : new Point(8, 5);
+        emailHint.Visible = string.IsNullOrEmpty(email.Text) && !email.Focused;
+        passwordHint.Visible = string.IsNullOrEmpty(password.Text) && !password.Focused;
         reset.Text = french ? "Réinitialiser" : "إعادة الإعداد";
         if (Controls.OfType<Button>().FirstOrDefault(button => button.DialogResult == DialogResult.No) is { } cancel) cancel.Text = french ? "Annuler" : "إلغاء";
         email.TextAlign = password.TextAlign = french ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+        email.RightToLeft = password.RightToLeft = french ? RightToLeft.No : RightToLeft.Yes;
         titleLabel.Font = UiFont(french ? 15 : 16, FontStyle.Bold);
         Invalidate(true);
     }
@@ -135,17 +146,25 @@ internal sealed class ResetConfirmForm : Form
     {
         frame.Bounds = bounds; frame.BackColor = Color.FromArgb(28, 33, 38); frame.Padding = Padding.Empty; frame.Tag = kind;
         ApplyRounded(frame, 10);
-        input.Dock = DockStyle.None; input.BorderStyle = BorderStyle.None; input.Font = UiFont(11.5f); input.BackColor = frame.BackColor; input.ForeColor = Color.White; input.PlaceholderText = placeholder; input.TextAlign = HorizontalAlignment.Right; input.RightToLeft = RightToLeft.Yes; input.AutoSize = false; input.Padding = Padding.Empty; input.HideSelection = false; input.Cursor = Cursors.IBeam; input.Size = new Size(bounds.Width - 76, 32); input.Location = new Point(12, 4);
+        input.Dock = DockStyle.None; input.BorderStyle = BorderStyle.None; input.Font = UiFont(11.5f); input.BackColor = frame.BackColor; input.ForeColor = Color.White; input.PlaceholderText = string.Empty; input.TextAlign = HorizontalAlignment.Right; input.RightToLeft = RightToLeft.Yes; input.AutoSize = false; input.Padding = Padding.Empty; input.HideSelection = false; input.Cursor = Cursors.IBeam; input.Size = new Size(bounds.Width - 84, 30); input.Location = new Point(42, 5);
         if (kind == "password") input.PasswordChar = '●';
         frame.Controls.Add(input);
+        var hint = kind == "email" ? emailHint : passwordHint;
+        hint.Text = placeholder; hint.Bounds = input.Bounds; hint.BackColor = Color.Transparent; hint.ForeColor = Color.FromArgb(139, 169, 179); hint.Font = input.Font; hint.TextAlign = ContentAlignment.MiddleRight; hint.RightToLeft = RightToLeft.Yes; hint.UseCompatibleTextRendering = true; hint.Cursor = Cursors.IBeam; hint.Visible = string.IsNullOrEmpty(input.Text);
+        hint.MouseDown += (_, _) => FocusResetInput(input);
+        frame.Controls.Add(hint); hint.BringToFront();
+        void RefreshHint() { hint.Visible = string.IsNullOrEmpty(input.Text) && !input.Focused; }
+        input.TextChanged += (_, _) => RefreshHint();
         input.MouseDown += (_, _) => FocusResetInput(input);
         input.GotFocus += (_, _) =>
         {
+            RefreshHint();
             input.SelectionStart = input.TextLength;
             input.SelectionLength = 0;
             if (input.IsHandleCreated) ShowCaret(input.Handle);
             frame.Invalidate();
         };
+        input.LostFocus += (_, _) => RefreshHint();
         frame.MouseDown += (_, _) => FocusResetInput(input);
         if (kind == "password")
         {
@@ -160,12 +179,13 @@ internal sealed class ResetConfirmForm : Form
             using var pen = new Pen(input.Focused ? Color.FromArgb(37, 164, 190) : Color.FromArgb(67, 78, 84), 1);
             using var path = RoundedPath(new Rectangle(1, 1, frame.Width - 3, frame.Height - 3), 9);
             e.Graphics.DrawPath(pen, path);
-            var ix = frame.Width - 36; var iy = 10;
+            var ix = french ? 16 : frame.Width - 36; var iy = 10;
             using var icon = LoadTintedIcon(kind == "email" ? "mail.png" : "password.png");
             e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
             e.Graphics.DrawImage(icon, new Rectangle(ix, iy, 20, 20));
         };
-        input.Enter += (_, _) => frame.Invalidate(); input.Leave += (_, _) => frame.Invalidate();
+        input.Enter += (_, _) => { RefreshHint(); frame.Invalidate(); };
+        input.Leave += (_, _) => { RefreshHint(); frame.Invalidate(); };
     }
 
     private static void FocusResetInput(TextBox input)
@@ -266,6 +286,8 @@ internal sealed class LauncherForm : Form
     public LauncherForm()
     {
         LoadPlatformFont();
+        AutoScaleMode = AutoScaleMode.None;
+        AutoScaleDimensions = new SizeF(96f, 96f);
         Text = "AGIRE";
         AutoScaleMode = AutoScaleMode.None;
         AutoScaleDimensions = new SizeF(96, 96);
@@ -423,15 +445,10 @@ internal sealed class LauncherForm : Form
         // padding keeps text clear of the icon columns.
         email.TextAlign = french ? HorizontalAlignment.Left : HorizontalAlignment.Right;
         password.TextAlign = email.TextAlign;
-        // Keep the input's layout direction neutral so Windows does not move
-        // the native placeholder to an edge when Arabic is selected. The
-        // Arabic glyphs still render correctly, while alignment stays centered.
-        email.RightToLeft = RightToLeft.No;
-        password.RightToLeft = RightToLeft.No;
-        email.PlaceholderText = french ? "Saisissez l’adresse e-mail" : "أدخل البريد الإلكتروني";
-        password.PlaceholderText = french ? "Saisissez le mot de passe" : "أدخل كلمة المرور";
-        if (emailHint is not null) emailHint.Text = email.PlaceholderText;
-        if (passwordHint is not null) passwordHint.Text = password.PlaceholderText;
+        email.RightToLeft = password.RightToLeft = french ? RightToLeft.No : RightToLeft.Yes;
+        email.PlaceholderText = password.PlaceholderText = string.Empty;
+        if (emailHint is not null) emailHint.Text = french ? "Saisissez l’adresse e-mail" : "أدخل البريد الإلكتروني";
+        if (passwordHint is not null) passwordHint.Text = french ? "Saisissez le mot de passe" : "أدخل كلمة المرور";
         UpdateHints();
         if (isStarting) status.Text = french ? "Démarrage de la plateforme…" : statusArabic;
         SetInputFrameLanguage(emailFrameControl, french);
@@ -473,6 +490,7 @@ internal sealed class LauncherForm : Form
     {
         if (hint is null) return;
         hint.TextAlign = useFrench ? ContentAlignment.MiddleLeft : ContentAlignment.MiddleRight;
+        hint.RightToLeft = useFrench ? RightToLeft.No : RightToLeft.Yes;
         hint.Padding = useFrench ? new Padding(2, 0, 0, 0) : new Padding(0, 0, 2, 0);
     }
 
@@ -487,7 +505,7 @@ internal sealed class LauncherForm : Form
         var hint = new Label
         {
             Text = text,
-            Dock = DockStyle.Fill,
+            Bounds = new Rectangle(52, 3, Math.Max(0, frame.Width - 104), frame.Height - 6),
             Enabled = true,
             TabStop = false,
             BackColor = Color.Transparent,
@@ -501,21 +519,23 @@ internal sealed class LauncherForm : Form
         // The hint is visual only. Forward its click to the real TextBox so the
         // user can click directly on the placeholder and start typing.
         var target = Equals(frame.Tag, "email") ? email : password;
+        // Use a direction-aware overlay instead of Windows' native cue banner,
+        // which can place Arabic text at the wrong edge in WinForms.
+        hint.Visible = string.IsNullOrEmpty(target.Text) && !target.Focused;
         hint.MouseDown += (_, _) =>
         {
             target.Focus();
             target.SelectionStart = target.TextLength;
         };
-        // Use the native TextBox placeholder instead of a child overlay. A child
-        // label can visually overlap typed text and can steal input focus.
-        hint.Visible = false;
+        frame.Controls.Add(hint);
+        hint.BringToFront();
         return hint;
     }
 
     private void UpdateHints()
     {
-        if (emailHint is not null) emailHint.Visible = string.IsNullOrEmpty(email.Text);
-        if (passwordHint is not null) passwordHint.Visible = string.IsNullOrEmpty(password.Text);
+        if (emailHint is not null) emailHint.Visible = string.IsNullOrEmpty(email.Text) && !email.Focused;
+        if (passwordHint is not null) passwordHint.Visible = string.IsNullOrEmpty(password.Text) && !password.Focused;
     }
 
     private void SetTheme(bool useLight)
@@ -654,8 +674,8 @@ internal sealed class LauncherForm : Form
             ShowCaret(input.Handle);
             frame.Invalidate();
         };
-        input.Enter += (_, _) => frame.Invalidate();
-        input.Leave += (_, _) => frame.Invalidate();
+        input.Enter += (_, _) => { UpdateHints(); frame.Invalidate(); };
+        input.Leave += (_, _) => { UpdateHints(); frame.Invalidate(); };
         return frame;
     }
 
