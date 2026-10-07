@@ -950,14 +950,14 @@ html[data-theme="dark"] .range-switch button.selected { box-shadow: 0 1px 5px rg
    the breadcrumb when the desktop workspace is between tablet and wide sizes. */
 .topbar { min-width: 0; }
 .breadcrumb { min-width: 0; flex: 0 1 auto; white-space: nowrap; }
-.breadcrumb { display: inline-flex; align-items: center; gap: 10px; width: fit-content; height: 38px; min-height: 38px; box-sizing: border-box; padding: 5px 11px; border: 1px solid color-mix(in srgb, var(--line) 82%, transparent); border-radius: 11px; background: color-mix(in srgb, var(--card) 82%, transparent); color: var(--muted); font-size: 11px; }
+.breadcrumb { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 10px; width: fit-content; max-width: 100%; height: 38px; min-height: 38px; box-sizing: border-box; overflow: hidden; padding: 5px 11px; border: 1px solid color-mix(in srgb, var(--line) 82%, transparent); border-radius: 11px; background: color-mix(in srgb, var(--card) 82%, transparent); color: var(--muted); font-size: 11px; }
 .topbar-sidebar-toggle { display: none; position: absolute; inset-inline-start: 10px; inset-inline-end: auto; top: 50%; transform: translateY(-50%); z-index: 2; }
 .app-shell.sidebar-collapsed .topbar-sidebar-toggle { display: inline-grid; }
 .topbar .breadcrumb { margin-block: 0; margin-inline-end: 52px; }
-.breadcrumb-root { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.breadcrumb-root { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; }
 .breadcrumb-root .app-icon { color: var(--teal); }
-.breadcrumb .crumb-sep { color: color-mix(in srgb, var(--muted) 55%, transparent); font-size: 16px; line-height: 1; }
-.breadcrumb b { color: var(--ink); font-size: 11px; font-weight: 700; }
+.breadcrumb .crumb-sep { flex: 0 0 auto; color: color-mix(in srgb, var(--muted) 55%, transparent); font-size: 16px; line-height: 1; }
+.breadcrumb b { min-width: 0; overflow: hidden; color: var(--ink); font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 html[data-theme="dark"] .breadcrumb { border-color: #3d444a; background: color-mix(in srgb, #292d32 88%, transparent); }
 .topbar-actions { min-width: 0; flex: 0 0 auto; }
 .topbar-account { display: flex; align-items: center; gap: 8px; min-width: 0; padding-inline-start: 12px; border-inline-start: 1px solid var(--line); }
