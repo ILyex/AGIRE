@@ -42,6 +42,16 @@ dotnet run --project src/web/Hawdh.Portal
 
 افتح العنوان الذي يظهر في الطرفية. قاعدة SQLite تحفظ محلياً داخل `src/web/Hawdh.Portal/App_Data/`. لا تستخدم هذا الوضع للتشغيل المشترك أو لبيانات حقيقية.
 
+## بناء نسخة العميل لويندوز
+
+يحتاج التطوير والبناء إلى .NET 10 SDK. من جهاز Windows 64 بت، أنشئ حزمة عميل مستقلة بالأمر التالي:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\deploy\local-windows\Publish-HawdhLocal.ps1
+```
+
+ينشئ السكربت ملفات التطبيق المستقلة داخل `artifacts/hawdh-local-win-x64`. لا يحتاج جهاز العميل إلى SDK؛ أرسل له ZIP العميل فقط. مصدر العمل والتعديلات البرمجية تبقى في هذا المستودع، ولا تدخل إلى حزمة عميل جديدة إلا عند إصدارها.
+
 إرسال روابط التأكيد والاستعادة في التطوير اختياري؛ عند الحاجة اضبط متغيرات `Smtp__Host` و`Smtp__Port` و`Smtp__Security` و`Smtp__FromAddress`، وأضف `Smtp__UserName` و`Smtp__Password` إذا كان الخادم يتطلب مصادقة. يدعم الإنتاج `StartTls` أو `SslOnConnect` فقط.
 
 ## تشغيل PostgreSQL محلياً عبر Docker Compose
