@@ -27,7 +27,7 @@
             <DataAnnotationsValidator />
             <div class="mb-3" style="display:block;width:100%;"><label class="form-label" for="login-email">@T["email"]</label><div class="auth-input-wrap" style="display:flex;width:100%;"><AppIcon Name="mail" Size="17" /><InputText @bind-Value="Input.Email" id="login-email" class="form-control" style="width:100%;" autocomplete="username" inputmode="email" /></div></div>
             <div class="mb-2" style="display:block;width:100%;"><label class="form-label" for="login-password">@T["password"]</label><div class="auth-input-wrap" style="display:flex;width:100%;"><AppIcon Name="key" Size="17" /><InputText type="password" @bind-Value="Input.Password" id="login-password" class="form-control" style="width:100%;" autocomplete="current-password" /></div></div>
-            <div class="d-flex justify-content-between align-items-center my-3"><label class="remember-label"><InputCheckbox @bind-Value="Input.RememberMe" /> <span>@T["remember"]</span></label><a class="auth-link" href="/Account/ForgotPassword">@T["forgotPassword"]</a></div>
+            <div class="d-flex align-items-center my-3"><label class="remember-label"><InputCheckbox @bind-Value="Input.RememberMe" /> <span>@T["remember"]</span></label></div>
             <button type="submit" class="btn btn-primary w-100 auth-submit">@T["signIn"] <AppIcon Name="arrow" Size="17" /></button>
         </EditForm>
         <div class="auth-note"><AppIcon Name="shield" Size="15" /> @T["loginFoot"]</div>

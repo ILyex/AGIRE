@@ -152,12 +152,11 @@ builder.Services.AddScoped<IEmailSender<ApplicationUser>, SmtpIdentityEmailSende
 var app = builder.Build();
 app.UseForwardedHeaders();
 
-// Bound login and recovery submissions by the client address. ASP.NET Identity's
+// Bound login and email confirmation submissions by the client address. ASP.NET Identity's
 // per-account lockout remains the second independent login limit.
 var loginLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
 {
-    var isEmailRequest = context.Request.Path.Equals("/Account/ForgotPassword", StringComparison.OrdinalIgnoreCase)
-        || context.Request.Path.Equals("/Account/ResendEmailConfirmation", StringComparison.OrdinalIgnoreCase);
+    var isEmailRequest = context.Request.Path.Equals("/Account/ResendEmailConfirmation", StringComparison.OrdinalIgnoreCase);
     var key = (context.Connection.RemoteIpAddress?.ToString() ?? "unknown") + (isEmailRequest ? ":email" : ":login");
     return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
     {
@@ -171,8 +170,7 @@ app.Lifetime.ApplicationStopped.Register(loginLimiter.Dispose);
 app.Use(async (context, next) =>
 {
     var isLoginRequest = context.Request.Path.Equals("/Account/Login", StringComparison.OrdinalIgnoreCase);
-    var isEmailRequest = context.Request.Path.Equals("/Account/ForgotPassword", StringComparison.OrdinalIgnoreCase)
-        || context.Request.Path.Equals("/Account/ResendEmailConfirmation", StringComparison.OrdinalIgnoreCase);
+    var isEmailRequest = context.Request.Path.Equals("/Account/ResendEmailConfirmation", StringComparison.OrdinalIgnoreCase);
     if (HttpMethods.IsPost(context.Request.Method) && (isLoginRequest || isEmailRequest))
     {
         using var lease = await loginLimiter.AcquireAsync(context, 1, context.RequestAborted);

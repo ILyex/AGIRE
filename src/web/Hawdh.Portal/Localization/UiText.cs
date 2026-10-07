@@ -9,20 +9,10 @@ public sealed class UiText
         ["brand"] = ("AGIRE", "AGIRE"), ["brandSub"] = ("الموارد المائية", "Ressources en eau"),
         ["morningGreeting"] = ("صباح الخير", "Bonjour"), ["eveningGreeting"] = ("مساء الخير", "Bonsoir"),
         ["registerConfirmationTitle"] = ("تأكيد الحساب", "Confirmation du compte"),
-        ["passwordRecoveryTitle"] = ("استعادة كلمة المرور", "Récupération du mot de passe"),
         ["backToLogin"] = ("العودة إلى تسجيل الدخول", "Retour à la connexion"),
-        ["passwordRecoveryHint"] = ("أدخل البريد الإلكتروني المرتبط بحسابك وسنرسل رابطاً لإعادة تعيين كلمة المرور إذا كان الحساب مؤهلاً.", "Saisissez l’adresse e-mail associée à votre compte. Si celui-ci est admissible, un lien de réinitialisation vous sera envoyé."),
-        ["passwordRecoverySent"] = ("إذا كان البريد مرتبطاً بحساب نشط ومؤكد، فستصلك رسالة لإعادة تعيين كلمة المرور.", "Si cette adresse est associée à un compte actif et confirmé, vous recevrez un message de réinitialisation."),
-        ["sendRecoveryLink"] = ("إرسال رابط الاستعادة", "Envoyer le lien de réinitialisation"),
         ["confirmationEmailSent"] = ("تحقق من بريدك الإلكتروني لفتح رابط تأكيد الحساب.", "Consultez votre boîte e-mail pour ouvrir le lien de confirmation."),
-        ["forgotPassword"] = ("نسيت كلمة المرور؟", "Mot de passe oublié ?"),
-        ["resetPasswordTitle"] = ("تعيين كلمة مرور جديدة", "Définir un nouveau mot de passe"),
-        ["resetPasswordHint"] = ("أدخل بريد الحساب وكلمة المرور الجديدة لتأكيد التغيير.", "Saisissez l’adresse e-mail du compte et votre nouveau mot de passe pour confirmer la modification."),
         ["newPassword"] = ("كلمة المرور الجديدة", "Nouveau mot de passe"),
         ["confirmNewPassword"] = ("تأكيد كلمة المرور الجديدة", "Confirmer le nouveau mot de passe"),
-        ["resetPasswordButton"] = ("تعيين كلمة المرور", "Réinitialiser le mot de passe"),
-        ["passwordResetComplete"] = ("تم تغيير كلمة المرور. يمكنك تسجيل الدخول الآن.", "Votre mot de passe a été modifié. Vous pouvez vous connecter."),
-        ["invalidPasswordResetLink"] = ("رابط إعادة تعيين كلمة المرور غير صالح أو انتهت صلاحيته.", "Le lien de réinitialisation est invalide ou a expiré."),
         ["backToLoginAction"] = ("تسجيل الدخول", "Se connecter"),
         ["emailAlreadyInUse"] = ("هذا البريد الإلكتروني مرتبط بحساب آخر.", "Cette adresse e-mail est déjà associée à un autre compte."),
         ["emailChangeConfirmTitle"] = ("تأكيد تغيير البريد الإلكتروني", "Confirmer le changement d’adresse e-mail"),
@@ -205,7 +195,6 @@ public sealed class UiText
         , ["savePassword"] = ("حفظ كلمة المرور", "Enregistrer le mot de passe")
         , ["passwordSet"] = ("تمت إضافة كلمة المرور بنجاح.", "Le mot de passe a été ajouté.")
         , ["passwordSetFailed"] = ("تعذرت إضافة كلمة المرور. تحقق من استيفائها للمتطلبات ثم أعد المحاولة.", "Impossible d’ajouter le mot de passe. Vérifiez qu’il respecte les exigences puis réessayez.")
-        , ["resetPasswordFailed"] = ("تعذر تغيير كلمة المرور. ربما انتهت صلاحية الرابط أو لم تستوفِ كلمة المرور المتطلبات.", "Impossible de modifier le mot de passe. Le lien a peut-être expiré ou le mot de passe ne respecte pas les exigences.")
         , ["recoveryCodePlaceholder"] = ("أدخل رمز الاسترداد", "Saisissez le code de récupération")
         , ["invalidUserTitle"] = ("تعذر العثور على الحساب", "Compte introuvable")
         , ["invalidUserHint"] = ("تعذر استعادة بيانات هذا الحساب. سجّل الدخول مجدداً أو تواصل مع مسؤول المنصة.", "Impossible de retrouver les informations de ce compte. Reconnectez-vous ou contactez l’administrateur de la plateforme.")
