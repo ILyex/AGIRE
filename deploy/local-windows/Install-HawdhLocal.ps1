@@ -79,7 +79,8 @@ function Test-Administrator {
 
 if (-not (Test-Administrator)) {
     $arguments = "-NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File `"$($MyInvocation.MyCommand.Path)`" -Port $Port -InstallDirectory `"$InstallDirectory`""
-    Start-Process powershell.exe -Verb RunAs -WindowStyle Normal -ArgumentList $arguments -ErrorAction Stop
+    # Elevate without opening a console window; the WinForms installer remains visible.
+    Start-Process powershell.exe -Verb RunAs -WindowStyle Hidden -ArgumentList $arguments -ErrorAction Stop
     try { Stop-Transcript | Out-Null } catch { }
     exit 0
 }
