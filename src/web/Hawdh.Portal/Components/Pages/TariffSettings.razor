@@ -84,7 +84,7 @@
 
     private sealed class TariffForm
     {
-        [Range(typeof(decimal), "0.0001", "99999999999999.9999")]
+        [Range(typeof(decimal), "0.0001", "99999999999999.9999", ParseLimitsInInvariantCulture = true)]
         public decimal Rate { get; set; }
     }
 }
